@@ -1,0 +1,11 @@
+# Starr Journey
+> TODO
+Made by KelvinY.
+
+## Gameplay
+- **POINT**: DETAILS.
+
+## Links
+- [Live Demo](https://starrjourney.pages.dev/)
+- [GitHub Repository](https://github.com/kelvinyhf/starr-journey)
+- [Developer Profile](https://github.com/kelvinyhf)
