@@ -1,7 +1,79 @@
-<html>
-  <head>
-    <title>My Game</title>
-    <script type="module" src="./main.js"></script>
-  </head>
-  <body></body>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  
+  <!-- Basic Meta Tags -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <!-- SEO Meta Tags -->
+  <title>Starr Journey ✨</title>
+  <meta name="description" content="TODO">
+  <meta name="author" content="KelvinY">
+  <link rel="canonical" href="https://starrjourney.pages.dev/">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Starr Journey ✨">
+  <meta property="og:description" content="TODO">
+  <!-- <meta property="og:image" content="https://starrjourney.pages.dev/assets/images/open-graph-image.png"> -->
+  <meta property="og:url" content="https://starrjourney.pages.dev/">
+  <meta property="og:type" content="website">
+  
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Starr Journey ✨">
+  <meta name="twitter:description" content="TODO">
+  <!-- <meta name="twitter:image" content="https://starrjourney.pages.dev/assets/images/open-graph-image.png"> -->
+  
+  <!-- iOS Optimization -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"> <!-- Safe Area -->
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="format-detection" content="telephone=no">
+  
+  <!-- External Files -->
+  <!-- <link rel="icon" type="image/svg+xml" sizes="any" href="/assets/images/favicon.svg">
+  <link rel="manifest" href="./manifest.json">
+  <link id="apple-touch-icon" rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png"> -->
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="./assets/libraries/radix-colors.css">
+  <script>
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      fetch('./input.css')
+        .then(res => res.text())
+        .then(cssContent => {
+          
+          const style = document.createElement('style');
+          style.type = 'text/tailwindcss';
+          style.textContent = cssContent;
+          document.head.appendChild(style);
+          
+          const cdnScript = document.createElement('script');
+          cdnScript.src = './assets/libraries/tailwindcss.js';
+          cdnScript.defer = true;
+          document.head.appendChild(cdnScript);
+          
+        })
+        .catch(err => console.error(err));
+    } else {
+      
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = './output.css';
+      document.head.appendChild(link);
+      
+    }
+  </script>
+  
+  <!-- JavaScript -->
+  <script type="module" src="./main.js" defer></script>
+  
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+</body>
 </html>
