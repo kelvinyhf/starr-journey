@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark bg-purple-1">
+<html lang="en" class="dark no-scrollbar">
 <head>
   
   <!-- Basic Meta Tags -->
@@ -9,13 +9,13 @@
 
   <!-- SEO Meta Tags -->
   <title>Starr Journey</title>
-  <meta name="description" content="TODO">
+  <meta name="description" content="A casual web game about Starr dodging obstacles, built with KAPLAY">
   <meta name="author" content="KelvinY">
   <link rel="canonical" href="https://starrjourney.pages.dev/">
   
   <!-- Open Graph -->
   <meta property="og:title" content="Starr Journey">
-  <meta property="og:description" content="TODO">
+  <meta property="og:description" content="A casual web game about Starr dodging obstacles, built with KAPLAY">
   <!-- <meta property="og:image" content="https://starrjourney.pages.dev/assets/images/open-graph-image.png"> -->
   <meta property="og:url" content="https://starrjourney.pages.dev/">
   <meta property="og:type" content="website">
@@ -23,7 +23,7 @@
   <!-- Twitter Cards -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Starr Journey">
-  <meta name="twitter:description" content="TODO">
+  <meta name="twitter:description" content="A casual web game about Starr dodging obstacles, built with KAPLAY">
   <!-- <meta name="twitter:image" content="https://starrjourney.pages.dev/assets/images/open-graph-image.png"> -->
   
   <!-- iOS Optimization -->
@@ -40,6 +40,9 @@
   
   <!-- CSS -->
   <link rel="stylesheet" href="./assets/libraries/radix-colors.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Short+Stack&display=swap" rel="stylesheet">
   <script>
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
       fetch('./input.css')
@@ -72,7 +75,29 @@
   <script type="module" src="./main.js" defer></script>
   
 </head>
-<body class="bg-purple-1">
+<body class="no-scrollbar">
   <canvas id="canvas"></canvas>
+
+  <!-- Game UI -->
+  <div class="absolute inset-0 w-full h-full pointer-events-none p-6 flex flex-col justify-between items-center">
+
+    <!-- Top Bar -->
+    <div class="flex justify-between items-center w-full">
+
+      <!-- Health Bar -->
+      <div class="flex justify-between items-center bg-gray-1 border-2 border-gray-12 rounded-md p-1 w-48 h-6">
+        <div id="health-bar" class="bg-green-10 w-full h-full transition-[width]"></div>
+      </div>
+
+      <!-- Coin Label -->
+      <div class="flex justify-between gap-3 items-center">
+        <img src="./assets/sprites/coin-o.png" class="w-7">
+        <span id="coin-label" class="text-2xl">0</span>
+      </div>
+
+    </div>
+
+  </div>
+
 </body>
 </html>

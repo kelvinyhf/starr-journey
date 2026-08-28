@@ -1,5 +1,5 @@
 # Starr Journey
-> TODO
+> A casual web game about Starr dodging obstacles, built with KAPLAY
 Made by KelvinY.
 
 ## Gameplay
