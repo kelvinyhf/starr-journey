@@ -268,7 +268,7 @@
   html {
     overflow: hidden;
     background-color: var(--bg-purple-1);
-    font-family: 'Short Stack', sans-serif;
+    font-family: 'Playpen Sans', sans-serif;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     scroll-behavior: smooth;
@@ -278,7 +278,6 @@
     overflow: hidden;
     background-color: var(--bg-purple-1);
     color: var(--gray-12);
-    line-height: 1.5;
   }
   
   :focus {
