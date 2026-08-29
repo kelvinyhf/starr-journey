@@ -16,9 +16,9 @@ k.setCursor("url('./assets/sprites/cursor.png'), auto");
 // Load sprites
 // ------------------------------
 k.loadSprite("starr", "./assets/sprites/star-o.png");
-k.loadSprite("rock-sm", "./assets/sprites/rock-sm.png");
-k.loadSprite("rock-md", "./assets/sprites/rock-md.png");
-k.loadSprite("rock-lg", "./assets/sprites/rock-lg.png");
+k.loadSprite("rock-sm", "./assets/sprites/rocks/rock-sm.png");
+k.loadSprite("rock-md", "./assets/sprites/rocks/rock-md.png");
+k.loadSprite("rock-lg", "./assets/sprites/rocks/rock-lg.png");
 k.loadSprite(
   "coin",
   [
@@ -44,6 +44,12 @@ k.loadSprite(
 );
 
 // ------------------------------
+// Global State
+// ------------------------------
+let isFinished = false;
+
+
+// ------------------------------
 // Starr
 // ------------------------------
 const baseX = k.width() * 0.5;
@@ -53,14 +59,20 @@ const starr = k.add([
   k.pos(baseX, baseY),
   k.rotate(0),
   k.anchor("center"),
-  k.area()
+  k.area(),
+  k.z(99)
 ]);
 
 starr.onUpdate(() => {
-  
-  // Make Starr follow mouse smoothly
-  const targetX = k.mousePos().x !== 0 && k.mousePos().y !== 0 ? k.toWorld(k.mousePos()).x : baseX;
-  starr.pos.x = k.lerp(starr.pos.x, targetX, 0.075);
+  if (!isFinished) {
+
+    // Make Starr follow mouse smoothly
+    const targetX = k.mousePos().x !== 0 && k.mousePos().y !== 0 ? k.toWorld(k.mousePos()).x : baseX;
+    starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
+
+  } else {
+    starr.pos.x = k.lerp(starr.pos.x, baseX, 0.1);
+  }
   
   // Make it float and spins
   starr.pos.y = baseY + Math.sin(k.time() * 3) * 25;
@@ -82,6 +94,7 @@ k.loop(0.1, () => {
     k.pos(k.rand(0, k.width()), -50),
     k.anchor("center"),
     k.area(),
+    k.z(1),
     "star"
   ]);
   
@@ -104,6 +117,7 @@ k.loop(0.025, () => {
     k.pos(k.rand(0, k.width()), -50),
     k.anchor("center"),
     k.area(),
+    k.z(0),
     "star"
   ]);
   
@@ -126,6 +140,7 @@ k.loop(0.5, () => {
     k.pos(k.rand(0, k.width()), -50),
     k.anchor("center"),
     k.area(),
+    k.z(2),
     "star"
   ]);
   
@@ -139,31 +154,68 @@ k.loop(0.5, () => {
 // ------------------------------
 // Items
 // ------------------------------
-k.loop(0.5, () => {
-  const startAngle = k.rand(0, 360);
-  const spinSpeed = k.rand(-120, 120);
-  const randomSpeed = k.rand(300, 500);
-  const randomScale = k.rand(0.75, 1);
+const ITEMS_CONFIG = [
+  {
+    name: "coin",
+    type: "coin",
+    weight: 5,
+    anim: { anim: "idle" },
+    normalOnly: true
+  },
   
-  const randomItem = k.chance(0.2) ? "coin" : k.choose(["rock-sm", "rock-md", "rock-lg"]);
-  const randomTag = randomItem === "coin" ? "coin" : "rock";
-  const anim = randomItem === "coin" ? { anim: "idle" } : {};
+  { name: "rock-sm", type: "rock", weight: 8, scale: [0.15, 0.3] },
+  { name: "rock-md", type: "rock", weight: 8, scale: [0.15, 0.3] },
+  { name: "rock-lg", type: "rock", weight: 8, scale: [0.15, 0.3] },
+
+  { name: "rock-sm", type: "rock", weight: 3, scale: [0.25, 0.5] },
+  { name: "rock-md", type: "rock", weight: 3, scale: [0.25, 0.5] },
+  { name: "rock-lg", type: "rock", weight: 3, scale: [0.25, 0.5] },
+
+  { name: "rock-sm", type: "rock", weight: 1, scale: [1, 1.25], zIndex: 100 },
+  { name: "rock-md", type: "rock", weight: 1, scale: [1, 1.25], zIndex: 100 },
+  { name: "rock-lg", type: "rock", weight: 1, scale: [1, 1.25], zIndex: 100 },
+
+];
+
+function getRandomItem() {
+  const availableItems = ITEMS_CONFIG.filter(item => !(isFinished && item.normalOnly));
+
+  const totalWeight = availableItems.reduce((sum, item) => sum + item.weight, 0);
+  let randomNum = k.rand(0, totalWeight);
+
+  for (const item of availableItems) {
+    if (randomNum < item.weight) return item;
+    randomNum -= item.weight;
+  }
+  return availableItems[0];
+}
+
+k.loop(0.5, () => {
+  const itemConfig = getRandomItem();
+
+  const [minScale, maxScale] = itemConfig.scale || [0.75, 1];
+  const randomScale = k.rand(minScale, maxScale);
+
   const item = k.add([
-    k.sprite(randomItem, anim),
-    k.pos(k.rand(0, k.width()), -50),
+    k.sprite(itemConfig.name, itemConfig.anim || {}),
+    k.pos(k.rand(0, k.width()), -500),
     k.scale(randomScale),
-    k.rotate(startAngle),
+    k.rotate(k.rand(0, 360)),
     k.anchor("center"),
     k.area(),
-    randomTag,
+    k.z(itemConfig.zIndex || 10),
+    itemConfig.type,
     "item"
   ]);
+  
+  const spinSpeed = k.rand(-120, 120);
+  const randomSpeed = k.rand(300, 500);
   
   // Drop and spin
   item.onUpdate(() => {
     item.pos.y += randomSpeed * k.dt();
     item.angle += spinSpeed * k.dt();
-    if (item.pos.y > k.height() + 50) item.destroy();
+    if (item.pos.y > k.height() + 500) item.destroy();
   });
   
 });
@@ -177,6 +229,7 @@ function addCoins(num) {
 }
 
 starr.onCollide("coin", (coin) => {
+  if (isFinished) return;
   coin.destroy();
   addCoins(1);
 });
@@ -197,6 +250,22 @@ function changeHealth(num) {
 }
 
 starr.onCollide("rock", (rock) => {
+  if (isFinished) return;
   rock.destroy();
   changeHealth(-20);
+});
+
+// ------------------------------
+// Progress
+// ------------------------------
+const progressBar = document.getElementById("progress-bar");
+const MAX_PROGRESS = 10;
+let progress = 0;
+k.onUpdate(() => {
+  if (progress < MAX_PROGRESS) {
+    progress += k.dt();
+    progressBar.style.width = progress / MAX_PROGRESS * 100 + "%";
+  } else {
+    isFinished = true;
+  }
 });
