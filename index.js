@@ -1,5 +1,5 @@
 // ------------------------------
-// Init and Settings
+// Init, Settings, and States
 // ------------------------------
 import kaplay from "./assets/libraries/kaplay.mjs";
 const k = kaplay({
@@ -8,6 +8,10 @@ const k = kaplay({
   fullscreen: true,
   global: false
 });
+const COINS = "starr_coins";
+let isInGame = false;
+let isFinished = false;
+let isInvincible = false;
 
 // Set cursor
 k.setCursor("url('./assets/sprites/cursor.png'), auto");
@@ -19,6 +23,32 @@ k.loadSprite("starr", "./assets/sprites/starr.png");
 k.loadSprite("rock-sm", "./assets/sprites/rocks/rock-sm.png");
 k.loadSprite("rock-md", "./assets/sprites/rocks/rock-md.png");
 k.loadSprite("rock-lg", "./assets/sprites/rocks/rock-lg.png");
+k.loadSprite("rock-sm-b", "./assets/sprites/rocks/rock-sm-b.png");
+k.loadSprite("rock-md-b", "./assets/sprites/rocks/rock-md-b.png");
+k.loadSprite("rock-lg-b", "./assets/sprites/rocks/rock-lg-b.png");
+k.loadSprite(
+  "coin",
+  [
+    "./assets/sprites/coin/frame1.png",
+    "./assets/sprites/coin/frame2.png",
+    "./assets/sprites/coin/frame3.png",
+    "./assets/sprites/coin/frame4.png",
+    "./assets/sprites/coin/frame5.png",
+    "./assets/sprites/coin/frame6.png",
+    "./assets/sprites/coin/frame7.png",
+    "./assets/sprites/coin/frame8.png"
+  ],
+  {
+    anims: {
+      idle: {
+        from: 0,
+        to: 7,
+        speed: 8,
+        loop: true
+      }
+    }
+  }
+);
 
 // ------------------------------
 // Starr
@@ -35,10 +65,22 @@ const starr = k.add([
 ]);
 
 starr.onUpdate(() => {
+  if (!isFinished) {
+
+    // Make Starr follow mouse smoothly
+    const targetX = k.mousePos().x !== 0 && k.mousePos().y !== 0 ? k.toWorld(k.mousePos()).x : baseX;
+    starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
+
+  } else {
+    starr.pos.x = k.lerp(starr.pos.x, baseX, 0.1);
+  }
   
   // Make it float and spins
   starr.pos.y = baseY + Math.sin(k.time() * 3) * 25;
-  starr.angle += 180 * k.dt();
+  starr.angle += 270 * k.dt();
+  
+  // Flash effect when invincible
+  if (isInvincible) starr.opacity = k.map(Math.sin(k.time() * 20), -1, 1, 0.25, 1);
   
 });
 
@@ -116,14 +158,33 @@ k.loop(0.5, () => {
 // ------------------------------
 // Items
 // ------------------------------
-const ITEMS_CONFIG = [
+const MENU_ITEMS = [
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] }
 ];
 
-function getRandomItem() {
-  const availableItems = ITEMS_CONFIG;
+const GAME_ITEMS = [
+  {
+    name: "coin",
+    type: "coin",
+    weight: 3,
+    anim: { anim: "idle" },
+    normalOnly: true
+  },
+  
+  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
+  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
+  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
+
+  { name: "rock-sm-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 100 },
+  { name: "rock-md-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 100 },
+  { name: "rock-lg-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 100 },
+
+];
+
+function getRandomItem(config) {
+  const availableItems = config;
   
   const totalWeight = availableItems.reduce((sum, item) => sum + item.weight, 0);
   let randomNum = k.rand(0, totalWeight);
@@ -135,8 +196,8 @@ function getRandomItem() {
   return availableItems[0];
 }
 
-k.loop(0.75, () => {
-  const itemConfig = getRandomItem();
+k.loop(isInGame ? 0.5 : 0.75, () => {
+  const itemConfig = getRandomItem(isInGame ? GAME_ITEMS : MENU_ITEMS);
 
   const [w, h] = itemConfig.hitbox || [];
   const hitbox = itemConfig.hitbox ? { shape: new k.Rect(k.vec2(-w / 2, -h / 2), w, h) } : {};
@@ -168,4 +229,77 @@ k.loop(0.75, () => {
     if (item.pos.y > k.height() + 500) item.destroy();
   });
   
+});
+
+// Coins
+const coinLabel = document.getElementById("coin-label");
+let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
+
+// Init coin label
+coinLabel.innerText = coins;
+
+function addCoins(num) {
+  coins += num;
+  localStorage.setItem(COINS, coins);
+  coinLabel.innerText = coins;
+}
+
+starr.onCollide("coin", (coin) => {
+  if (isFinished || !isInGame) return;
+  coin.destroy();
+  addCoins(1);
+});
+
+// Rocks
+const healthBar = document.getElementById("health-bar");
+let health = 100;
+function changeHealth(num) {
+  health += num;
+  healthBar.style.width = health + "%";
+
+  // Destroy Starr when health < 0
+  if (health <= 0) {
+    k.addKaboom(starr.pos);
+    starr.destroy();
+  }
+
+}
+
+starr.onCollide("rock", (rock) => {
+  if (isFinished || isInvincible || !isInGame) return;
+  isInvincible = true;
+  rock.destroy();
+  changeHealth(-20);
+  setTimeout(() => {
+    isInvincible = false;
+    starr.opacity = 1;
+  }, 2000);
+});
+
+// ------------------------------
+// Progress
+// ------------------------------
+const progressBar = document.getElementById("progress-bar");
+const MAX_PROGRESS = 60;
+let progress = 0;
+k.onUpdate(() => {
+  if (!isInGame) return;
+  if (progress < MAX_PROGRESS) {
+    progress += k.dt();
+    progressBar.style.width = progress / MAX_PROGRESS * 100 + "%";
+  } else {
+    isFinished = true;
+  }
+});
+
+const menuUI = document.getElementById("menu-ui");
+const gameUI = document.getElementById("game-ui");
+function enterGame() {
+  isInGame = true;
+  menuUI.classList.add('hidden');
+  gameUI.classList.remove('hidden');
+}
+
+menuUI.addEventListener("click", (event) => {
+  enterGame();
 });

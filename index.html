@@ -78,28 +78,56 @@
 <body class="no-scrollbar">
   <canvas id="canvas"></canvas>
 
-  <!-- Game UI -->
-  <div class="absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.3)] pointer-events-none flex flex-col justify-between items-center">
+  <!-- Menu UI -->
+  <div id="menu-ui" class="absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.3)] flex flex-col justify-between items-center">
 
+    <!-- Info -->
+    <div class="flex-1 flex justify-center items-center w-full">
+      <span class="text-xl">Click anywhere to start</button>
+    </div>
+
+    <!-- Bottom Bar -->
+    <!-- <div class="flex justify-between items-center w-full px-8 py-3"> -->
+      
+      <!-- Coin Label 
+      <div class="flex justify-between gap-1 items-center">
+        <img src="./assets/sprites/coin/frame1.png" class="w-14">
+        <span id="coin-label" class="text-2xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0</span>
+      </div>
+      
+    </div> -->
+
+  </div>
+
+  <!-- Game UI -->
+  <div id="game-ui" class="hidden absolute inset-0 w-full h-full pointer-events-none flex flex-col justify-between items-center">
+    
     <!-- Top Bar -->
     <div class="flex justify-between items-center w-full px-8 py-3">
-
-      <!-- Rks -->
-      <span id="rks-label" class="text-2xl font-bold [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">Rks 15.38</span>
-
+      
+      <!-- Health Bar -->
+      <div class="bg-red-10 shadow-[0_0_0_3px_#000,_0_0_0_5px_#fff] rounded-md w-45 h-5">
+        <div id="health-bar" class="bg-green-10 w-full h-full rounded-md transition-[width]"></div>
+      </div>
+      
       <!-- Coin Label -->
       <div class="flex justify-between gap-1 items-center">
         <img src="./assets/sprites/coin/frame1.png" class="w-14">
-        <span id="coin-label" class="text-2xl mb-1 [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0</span>
+        <span id="coin-label" class="text-2xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0</span>
       </div>
-
+      
     </div>
-
-    <!-- Chart Selection -->
-    <div class="flex-1 flex items-center w-full px-15">
-      <button class="w-full">CLICK ME</button>
+    
+    <!-- Bottom Bar -->
+    <div class="flex justify-between items-center w-full">
+      
+      <!-- Progress Bar -->
+      <div class="ml-auto w-full h-1">
+        <div id="progress-bar" class="bg-gray-12 w-0 h-full"></div>
+      </div>
+      
     </div>
-
+    
   </div>
 
 </body>
