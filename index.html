@@ -82,16 +82,16 @@
   <div id="menu-ui" class="absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.3)] flex flex-col justify-between items-center">
 
     <!-- Info -->
-    <div class="flex-1 flex justify-center items-center w-full">
-      <span class="text-xl">Click anywhere to start</span>
+    <div class="flex-1 flex justify-center items-center w-full px-6">
+      <span class="text-2xl text-center">Click anywhere to start</span>
     </div>
 
     <!-- Bottom Bar -->
-    <div class="flex justify-between items-center w-full px-8 py-3">
+    <div class="flex justify-center items-center w-full px-10 py-8">
       
       <!-- Coin Label -->
-      <div class="flex justify-between gap-1 items-center">
-        <img src="./assets/sprites/coin/frame1.png" class="w-14">
+      <div class="flex justify-between gap-3 items-center">
+        <img src="./assets/sprites/coin/frame1.png" class="w-7 h-7">
         <span id="coin-label" class="text-2xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0</span>
       </div>
       
@@ -117,10 +117,10 @@
     
     <!-- Death Screen UI -->
     <div id="death-screen-ui" class="hidden flex-1 flex justify-center items-center w-full">
-      <div class="flex flex-col items-center gap-2 bg-[rgba(0,0,0,0.5)] p-8 rounded-2xl">
+      <div class="flex flex-col items-center text-center gap-2 bg-[rgba(0,0,0,0.75)] p-8 rounded-2xl">
         <span class="block text-3xl">Game Over.. :(</span>
-        <span id="earned-coins" class="block text-xl"></span>
-        <button id="retry-btn" class="block text-lg pointer-events-auto cursor-pointer">Click me to retry</button>
+        <span id="collected-coins-label" class="block text-xl"></span>
+        <button id="retry-btn" class="block text-lg text-green-10 pointer-events-auto cursor-pointer">Click me to retry</button>
       </div>
     </div>
 

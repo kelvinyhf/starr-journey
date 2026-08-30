@@ -53,18 +53,43 @@ k.loadSprite(
 );
 
 // ------------------------------
+// Load sounds
+// ------------------------------
+k.loadSound("coin1", "./assets/sounds/coin1.wav");
+k.loadSound("coin2", "./assets/sounds/coin2.wav");
+k.loadSound("coin3", "./assets/sounds/coin3.wav");
+k.loadSound("explosion1", "./assets/sounds/explosion1.wav");
+k.loadSound("explosion2", "./assets/sounds/explosion2.wav");
+k.loadSound("gameover", "./assets/sounds/gameover.wav");
+k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
+k.loadSound("Pixelland", "./assets/sounds/Pixelland.mp3");
+k.loadSound("Reformat", "./assets/sounds/Reformat.mp3");
+
+const bgms = ["Pixel Peeker Polka - slower", "Pixelland", "Reformat"];
+let startIndex = k.choose([0, 1, 2]);
+function playBGM(index) {
+  const currentBGM = k.play(bgms[index], { volume: 0.5 });
+  currentBGM.onEnd(() => {
+    setTimeout(() => {
+      playBGM(index === 2 ? 0 : ++index)
+    }, 5000);
+  });
+}
+
+// ------------------------------
 // Game
 // ------------------------------
 const menuUI = document.getElementById("menu-ui");
 const gameUI = document.getElementById("game-ui");
 const deathScreenUI = document.getElementById("death-screen-ui");
-const earnedCoins = document.getElementById("earned-coins");
+const collectedCoinsLabel = document.getElementById("collected-coins-label");
 const retryBtn = document.getElementById("retry-btn");
 
 function enterGame() {
   isInGame = true;
   menuUI.classList.add('hidden');
   gameUI.classList.remove('hidden');
+  playBGM(startIndex);
 }
 
 function gameOver() {
@@ -73,10 +98,15 @@ function gameOver() {
   died = true;
 
   setTimeout(() => {
+    k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
-    earnedCoins.innerHTML = `Earned<img src="./assets/sprites/coin/frame1.png" class="inline w-10">${collectedCoins}`;
+    collectedCoinsLabel.innerHTML = `Collected ${collectedCoins} <img src="./assets/sprites/coin/frame1.png" class="inline w-6 h-6">`;
   }, 1000);
 
+}
+
+function getDifficulty() {
+  return 1 + (meters / 20) * 0.25;
 }
 
 menuUI.addEventListener("click", () => enterGame());
@@ -96,14 +126,19 @@ const starr = k.add([
   k.z(99)
 ]);
 
+let controlling = false;
 starr.onUpdate(() => {
-  if (isInGame) {
-    if (!isFinished) {
 
+  // Mark when mouse entered the canva
+  if (!controlling) {
+    if (k.mousePos().x !== 0 || k.mousePos().y !== 0) controlling = true;
+  }
+
+  if (isInGame) {
+    if (!isFinished && controlling) {
       // Make Starr follow mouse smoothly
       const targetX = k.toWorld(k.mousePos()).x;
       starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
-
     } else {
       starr.pos.x = k.lerp(starr.pos.x, baseX, 0.1);
     }
@@ -111,7 +146,7 @@ starr.onUpdate(() => {
 
   // Make it float and spins
   starr.pos.y = baseY + Math.sin(k.time() * 3) * 25;
-  starr.angle += 270 * k.dt();
+  starr.angle += 180 * getDifficulty() * k.dt();
   
   // Flash effect when invincible
   if (isInvincible) starr.opacity = k.map(Math.sin(k.time() * 20), -1, 1, 0.25, 1);
@@ -216,10 +251,6 @@ const GAME_ITEMS = [
 
 ];
 
-function getDifficulty() {
-  return 1 + (meters / 20) * 0.25;
-}
-
 function getRandomItem(config) {
   const availableItems = config;
   
@@ -295,11 +326,12 @@ starr.onCollide("coin", (coin) => {
   if (isFinished || !isInGame) return;
   coin.destroy();
   addCoins(1);
+  k.play(k.choose(["coin1", "coin2", "coin3"]), { volume: 0.8 });
 });
 
 // Rocks
 const healthBar = document.getElementById("health-bar");
-let health = 20;
+let health = 100;
 function changeHealth(num) {
   health += num;
   healthBar.style.width = health + "%";
@@ -308,6 +340,9 @@ function changeHealth(num) {
   if (health <= 0) {
     health = 0;
     gameOver();
+    k.play("explosion2", { volume: 1.2 });
+  } else {
+    k.play("explosion1", { volume: 0.8 });
   }
 
 }
@@ -316,7 +351,7 @@ starr.onCollide("rock", (rock) => {
   if (isFinished || isInvincible || !isInGame) return;
   isInvincible = true;
   rock.destroy();
-  changeHealth(-20);
+  changeHealth(-25);
   setTimeout(() => {
     isInvincible = false;
     starr.opacity = 1;
