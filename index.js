@@ -9,12 +9,14 @@ const k = kaplay({
   global: false
 });
 const COINS = "starr_coins";
+let collectedCoins = 0;
 let isInGame = false;
 let isFinished = false;
 let isInvincible = false;
+let died = false;
 
-// Set cursor
-k.setCursor("url('./assets/sprites/cursor.png'), auto");
+const THE_END = 999;
+let meters = 0;
 
 // ------------------------------
 // Load sprites
@@ -51,6 +53,36 @@ k.loadSprite(
 );
 
 // ------------------------------
+// Game
+// ------------------------------
+const menuUI = document.getElementById("menu-ui");
+const gameUI = document.getElementById("game-ui");
+const deathScreenUI = document.getElementById("death-screen-ui");
+const earnedCoins = document.getElementById("earned-coins");
+const retryBtn = document.getElementById("retry-btn");
+
+function enterGame() {
+  isInGame = true;
+  menuUI.classList.add('hidden');
+  gameUI.classList.remove('hidden');
+}
+
+function gameOver() {
+  k.addKaboom(starr.pos);
+  starr.destroy();
+  died = true;
+
+  setTimeout(() => {
+    deathScreenUI.classList.remove("hidden");
+    earnedCoins.innerHTML = `Earned<img src="./assets/sprites/coin/frame1.png" class="inline w-10">${collectedCoins}`;
+  }, 1000);
+
+}
+
+menuUI.addEventListener("click", () => enterGame());
+retryBtn.addEventListener("click", () => location.reload());
+
+// ------------------------------
 // Starr
 // ------------------------------
 const baseX = k.width() * 0.5;
@@ -65,16 +97,18 @@ const starr = k.add([
 ]);
 
 starr.onUpdate(() => {
-  if (!isFinished) {
+  if (isInGame) {
+    if (!isFinished) {
 
-    // Make Starr follow mouse smoothly
-    const targetX = k.mousePos().x !== 0 && k.mousePos().y !== 0 ? k.toWorld(k.mousePos()).x : baseX;
-    starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
+      // Make Starr follow mouse smoothly
+      const targetX = k.toWorld(k.mousePos()).x;
+      starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
 
-  } else {
-    starr.pos.x = k.lerp(starr.pos.x, baseX, 0.1);
+    } else {
+      starr.pos.x = k.lerp(starr.pos.x, baseX, 0.1);
+    }
   }
-  
+
   // Make it float and spins
   starr.pos.y = baseY + Math.sin(k.time() * 3) * 25;
   starr.angle += 270 * k.dt();
@@ -169,8 +203,7 @@ const GAME_ITEMS = [
     name: "coin",
     type: "coin",
     weight: 3,
-    anim: { anim: "idle" },
-    normalOnly: true
+    anim: { anim: "idle" }
   },
   
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
@@ -182,6 +215,10 @@ const GAME_ITEMS = [
   { name: "rock-lg-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 100 },
 
 ];
+
+function getDifficulty() {
+  return 1 + (meters / 20) * 0.25;
+}
 
 function getRandomItem(config) {
   const availableItems = config;
@@ -196,39 +233,48 @@ function getRandomItem(config) {
   return availableItems[0];
 }
 
-k.loop(isInGame ? 0.5 : 0.75, () => {
-  const itemConfig = getRandomItem(isInGame ? GAME_ITEMS : MENU_ITEMS);
-
-  const [w, h] = itemConfig.hitbox || [];
-  const hitbox = itemConfig.hitbox ? { shape: new k.Rect(k.vec2(-w / 2, -h / 2), w, h) } : {};
-
-  const [minScale, maxScale] = itemConfig.scale || [0.75, 1];
-  const randomScale = k.rand(minScale, maxScale);
-
-  const [minSpeed, maxSpeed] = itemConfig.speed || [300, 500];
-  const randomSpeed = k.rand(minSpeed, maxSpeed);
-
-  const item = k.add([
-    k.sprite(itemConfig.name, itemConfig.anim || {}),
-    k.pos(k.rand(0, k.width()), -500),
-    k.scale(randomScale),
-    k.rotate(k.rand(0, 360)),
-    k.anchor("center"),
-    k.area(hitbox),
-    k.z(itemConfig.zIndex || 10),
-    itemConfig.type,
-    "item"
-  ]);
+let itemTimer = 0;
+k.loop(0.1, () => {
+  itemTimer += 0.1;
+  const baseInterval = isInGame ? 0.5 : 0.75;
+  const targetInterval = Math.max(0.15, baseInterval / getDifficulty());
   
-  const spinSpeed = k.rand(-120, 120);
-  
-  // Drop and spin
-  item.onUpdate(() => {
-    item.pos.y += randomSpeed * k.dt();
-    item.angle += spinSpeed * k.dt();
-    if (item.pos.y > k.height() + 500) item.destroy();
-  });
-  
+  if (itemTimer >= targetInterval) {
+    itemTimer = 0;
+
+    const itemConfig = getRandomItem(isInGame ? GAME_ITEMS : MENU_ITEMS);
+
+    const [w, h] = itemConfig.hitbox || [];
+    const hitbox = itemConfig.hitbox ? { shape: new k.Rect(k.vec2(-w / 2, -h / 2), w, h) } : {};
+
+    const [minScale, maxScale] = itemConfig.scale || [0.75, 1];
+    const randomScale = k.rand(minScale, maxScale);
+
+    const [minSpeed, maxSpeed] = itemConfig.speed || [300, 500];
+    const randomSpeed = k.rand(minSpeed, maxSpeed) * Math.min(3, getDifficulty());
+
+    const item = k.add([
+      k.sprite(itemConfig.name, itemConfig.anim || {}),
+      k.pos(k.rand(0, k.width()), -500),
+      k.scale(randomScale),
+      k.rotate(k.rand(0, 360)),
+      k.anchor("center"),
+      k.area(hitbox),
+      k.z(itemConfig.zIndex || 10),
+      itemConfig.type,
+      "item"
+    ]);
+    
+    const spinSpeed = k.rand(-120, 120);
+    
+    // Drop and spin
+    item.onUpdate(() => {
+      item.pos.y += randomSpeed * k.dt();
+      item.angle += spinSpeed * k.dt();
+      if (item.pos.y > k.height() + 500) item.destroy();
+    });
+
+  }
 });
 
 // Coins
@@ -240,6 +286,7 @@ coinLabel.innerText = coins;
 
 function addCoins(num) {
   coins += num;
+  collectedCoins += num;
   localStorage.setItem(COINS, coins);
   coinLabel.innerText = coins;
 }
@@ -252,15 +299,15 @@ starr.onCollide("coin", (coin) => {
 
 // Rocks
 const healthBar = document.getElementById("health-bar");
-let health = 100;
+let health = 20;
 function changeHealth(num) {
   health += num;
   healthBar.style.width = health + "%";
 
   // Destroy Starr when health < 0
   if (health <= 0) {
-    k.addKaboom(starr.pos);
-    starr.destroy();
+    health = 0;
+    gameOver();
   }
 
 }
@@ -277,29 +324,23 @@ starr.onCollide("rock", (rock) => {
 });
 
 // ------------------------------
-// Progress
+// Meter Counter
 // ------------------------------
+const meterCounter = document.getElementById("meter-counter");
 const progressBar = document.getElementById("progress-bar");
-const MAX_PROGRESS = 60;
-let progress = 0;
+
+function truncTo(num, decimals) {
+  const factor = Math.pow(10, decimals);
+  return Math.trunc(num * factor) / factor;
+}
+
 k.onUpdate(() => {
-  if (!isInGame) return;
-  if (progress < MAX_PROGRESS) {
-    progress += k.dt();
-    progressBar.style.width = progress / MAX_PROGRESS * 100 + "%";
+  if (!isInGame || died) return;
+  if (meters < THE_END) {
+    meters += k.dt();
+    progressBar.style.width = meters / THE_END * 100 + "%";
+    meterCounter.innerText = meters.toFixed(1) + "m";
   } else {
     isFinished = true;
   }
-});
-
-const menuUI = document.getElementById("menu-ui");
-const gameUI = document.getElementById("game-ui");
-function enterGame() {
-  isInGame = true;
-  menuUI.classList.add('hidden');
-  gameUI.classList.remove('hidden');
-}
-
-menuUI.addEventListener("click", (event) => {
-  enterGame();
 });
