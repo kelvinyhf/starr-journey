@@ -92,7 +92,7 @@
       <!-- Coin Label -->
       <div class="flex justify-between gap-3 items-center">
         <img src="./assets/sprites/coin/frame1.png" class="w-7 h-7">
-        <span id="coin-label" class="text-2xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0</span>
+        <span id="coin-label" class="text-2xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]"></span>
       </div>
       
     </div>
@@ -103,15 +103,13 @@
   <div id="game-ui" class="hidden absolute inset-0 w-full h-full pointer-events-none flex flex-col justify-between items-center">
     
     <!-- Top Bar -->
-    <div class="flex justify-between items-center w-full px-8 py-6">
+    <div class="flex justify-between items-center w-full p-6">
       
       <!-- Health Bar -->
-      <div class="bg-red-10 shadow-[0_0_0_3px_#000,_0_0_0_5px_#fff] rounded-md w-45 h-5">
-        <div id="health-bar" class="bg-green-10 w-full h-full rounded-md transition-[width]"></div>
-      </div>
+      <img id="health-bar" src="./assets/sprites/health-bar/100.png" class="w-40">
       
       <!-- Meter Counter -->
-      <span id="meter-counter" class="text-2xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0m</span>
+      <span id="meter-counter" class="block text-2xl mr-4 [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0m</span>
       
     </div>
     
@@ -120,17 +118,13 @@
       <div class="flex flex-col items-center text-center gap-2 bg-[rgba(0,0,0,0.75)] p-8 rounded-2xl">
         <span class="block text-3xl">Game Over.. :(</span>
         <span id="collected-coins-label" class="block text-xl"></span>
+        <span id="best-distance" class="block text-xl"></span>
         <button id="retry-btn" class="block text-lg text-green-10 pointer-events-auto cursor-pointer">Click me to retry</button>
       </div>
     </div>
 
     <!-- Bottom Bar -->
     <div class="flex justify-between items-center w-full">
-      
-      <!-- Progress Bar -->
-      <div class="ml-auto w-full h-1">
-        <div id="progress-bar" class="bg-gray-12 w-0 h-full"></div>
-      </div>
       
     </div>
     

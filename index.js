@@ -8,15 +8,13 @@ const k = kaplay({
   fullscreen: true,
   global: false
 });
+const METERS = "starr_meters";
 const COINS = "starr_coins";
+let meters = 0;
 let collectedCoins = 0;
 let isInGame = false;
-let isFinished = false;
 let isInvincible = false;
 let died = false;
-
-const THE_END = 999;
-let meters = 0;
 
 // ------------------------------
 // Load sprites
@@ -96,17 +94,24 @@ function gameOver() {
   k.addKaboom(starr.pos);
   starr.destroy();
   died = true;
-
+  
+  // Set best distance
+  if (meters > bestDistance) {
+    bestDistance = meters.toFixed(1);
+    localStorage.setItem(METERS, meters.toFixed(1));
+  }
+  
   setTimeout(() => {
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
     collectedCoinsLabel.innerHTML = `Collected ${collectedCoins} <img src="./assets/sprites/coin/frame1.png" class="inline w-6 h-6">`;
+    bestDistanceLabel.innerHTML = `Best Distance <span class="text-red-10">${bestDistance}m</span>`;
   }, 1000);
 
 }
 
 function getDifficulty() {
-  return 1 + (meters / 20) * 0.25;
+  return Math.min(1 + (meters / 20) * 0.25, 5);
 }
 
 menuUI.addEventListener("click", () => enterGame());
@@ -135,7 +140,7 @@ starr.onUpdate(() => {
   }
 
   if (isInGame) {
-    if (!isFinished && controlling) {
+    if (controlling) {
       // Make Starr follow mouse smoothly
       const targetX = k.toWorld(k.mousePos()).x;
       starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
@@ -268,7 +273,7 @@ let itemTimer = 0;
 k.loop(0.1, () => {
   itemTimer += 0.1;
   const baseInterval = isInGame ? 0.5 : 0.75;
-  const targetInterval = Math.max(0.15, baseInterval / getDifficulty());
+  const targetInterval = baseInterval / getDifficulty();
   
   if (itemTimer >= targetInterval) {
     itemTimer = 0;
@@ -282,7 +287,7 @@ k.loop(0.1, () => {
     const randomScale = k.rand(minScale, maxScale);
 
     const [minSpeed, maxSpeed] = itemConfig.speed || [300, 500];
-    const randomSpeed = k.rand(minSpeed, maxSpeed) * Math.min(3, getDifficulty());
+    const randomSpeed = k.rand(minSpeed, maxSpeed) * getDifficulty();
 
     const item = k.add([
       k.sprite(itemConfig.name, itemConfig.anim || {}),
@@ -323,7 +328,7 @@ function addCoins(num) {
 }
 
 starr.onCollide("coin", (coin) => {
-  if (isFinished || !isInGame) return;
+  if (!isInGame) return;
   coin.destroy();
   addCoins(1);
   k.play(k.choose(["coin1", "coin2", "coin3"]), { volume: 0.8 });
@@ -331,10 +336,10 @@ starr.onCollide("coin", (coin) => {
 
 // Rocks
 const healthBar = document.getElementById("health-bar");
-let health = 100;
+let health = 4;
 function changeHealth(num) {
   health += num;
-  healthBar.style.width = health + "%";
+  healthBar.src = `./assets/sprites/health-bar/${health * 25}.png`;
 
   // Destroy Starr when health < 0
   if (health <= 0) {
@@ -348,10 +353,10 @@ function changeHealth(num) {
 }
 
 starr.onCollide("rock", (rock) => {
-  if (isFinished || isInvincible || !isInGame) return;
+  if (isInvincible || !isInGame) return;
   isInvincible = true;
   rock.destroy();
-  changeHealth(-25);
+  changeHealth(-1);
   setTimeout(() => {
     isInvincible = false;
     starr.opacity = 1;
@@ -362,7 +367,8 @@ starr.onCollide("rock", (rock) => {
 // Meter Counter
 // ------------------------------
 const meterCounter = document.getElementById("meter-counter");
-const progressBar = document.getElementById("progress-bar");
+const bestDistanceLabel = document.getElementById("best-distance");
+let bestDistance = parseFloat(localStorage.getItem(METERS) || "0", 10);
 
 function truncTo(num, decimals) {
   const factor = Math.pow(10, decimals);
@@ -371,11 +377,6 @@ function truncTo(num, decimals) {
 
 k.onUpdate(() => {
   if (!isInGame || died) return;
-  if (meters < THE_END) {
-    meters += k.dt();
-    progressBar.style.width = meters / THE_END * 100 + "%";
-    meterCounter.innerText = meters.toFixed(1) + "m";
-  } else {
-    isFinished = true;
-  }
+  meters += k.dt();
+  meterCounter.innerText = meters.toFixed(1) + "m";
 });
