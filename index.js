@@ -51,18 +51,25 @@ k.loadSprite(
   }
 );
 
-k.loadSprite("spark", "./assets/sprites/coin/spark.png", {
-  sliceX: 7,
-  sliceY: 1,
-  anims: {
-    spark: {
-      from: 0,
-      to: 6,
-      speed: 21,
-      loop: false
+k.loadSprite(
+  "spark",
+  [
+    "./assets/sprites/spark/frame1.png",
+    "./assets/sprites/spark/frame2.png",
+    "./assets/sprites/spark/frame3.png",
+    "./assets/sprites/spark/frame4.png"
+  ],
+  {
+    anims: {
+      spark: {
+        from: 0,
+        to: 3,
+        speed: 20,
+        loop: false
+      }
     }
   }
-});
+);
 
 k.loadSprite("explosion-sm", "./assets/sprites/explosions/explosion-sm.png", {
   sliceX: 8,
@@ -116,6 +123,14 @@ k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka -
 k.loadSound("Pixelland", "./assets/sounds/Pixelland.mp3");
 k.loadSound("Reformat", "./assets/sounds/Reformat.mp3");
 
+// Load Shader
+k.loadShader("flash", null, `
+  vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
+    float alpha = texture2D(tex, uv).a;
+    return vec4(1.0, 1.0, 1.0, alpha);
+  }
+`);
+
 const bgms = ["Pixel Peeker Polka - slower", "Pixelland", "Reformat"];
 let startIndex = k.choose([0, 1, 2]);
 function playBGM(index) {
@@ -156,8 +171,8 @@ function gameOver() {
   setTimeout(() => {
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
-    collectedCoinsLabel.innerHTML = `Collected ${collectedCoins} <img src="./assets/sprites/coin/frame1.png" class="inline w-6 h-6">`;
-    bestDistanceLabel.innerHTML = `Best Distance <span class="text-red-10">${bestDistance}m</span>`;
+    collectedCoinsLabel.innerHTML = `Collected <span class="text-2xl font-bold">${collectedCoins}</span> <img src="./assets/sprites/coin/frame1.png" class="inline w-6 h-6">`;
+    bestDistanceLabel.innerHTML = `Best Distance <span class="text-2xl text-red-10 font-bold">${bestDistance}m</span>`;
   }, 1000);
 
 }
@@ -168,6 +183,11 @@ function getDifficulty() {
 
 menuUI.addEventListener("click", () => enterGame());
 retryBtn.addEventListener("click", () => location.reload());
+
+// Loading Screen
+document.addEventListener("DOMContentLoaded", () => {
+  k.onLoad(() => document.getElementById("loading-screen").remove());
+});
 
 // ------------------------------
 // Starr
@@ -180,8 +200,10 @@ const starr = k.add([
   k.rotate(0),
   k.anchor("center"),
   k.area(),
-  k.z(99)
+  k.z(99),
+  k.shader("flash")
 ]);
+starr.shader = null;
 
 let controlling = false;
 starr.onUpdate(() => {
@@ -381,8 +403,8 @@ function addCoins(num, coinPos) {
   const spark = k.add([
     k.sprite("spark"),
     k.pos(coinPos),
-    k.scale(2),
-    k.opacity(0.75),
+    k.scale(4),
+    k.opacity(1),
     k.anchor("top"),
     k.z(100)
   ]);
@@ -436,10 +458,10 @@ function explode(rockPos, fatal = false) {
 
   // Play animation and destroy when finished
   explosion.play("explode");
-  explosion.onAnimEnd(() => {
-    explosion.destroy();
-  });
-
+  explosion.onAnimEnd(() => explosion.destroy());
+  starr.shader = "flash";
+  setTimeout(() => starr.shader = null, 100);
+  
 }
 
 starr.onCollide("rock", (rock) => {

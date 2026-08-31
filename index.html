@@ -76,14 +76,29 @@
   
 </head>
 <body class="no-scrollbar">
+  
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="absolute inset-0 w-full h-full bg-purple-1 z-99 flex justify-center items-center">
+    <span class="text-2xl text-center">Loading... :)</span>
+  </div>
+  
+  <!-- Game Canva -->
   <canvas id="canvas"></canvas>
 
   <!-- Menu UI -->
   <div id="menu-ui" class="absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.3)] flex flex-col justify-between items-center">
 
     <!-- Info -->
-    <div class="flex-1 flex justify-center items-center w-full px-6">
-      <span class="text-2xl text-center">Click anywhere to start</span>
+    <div class="flex-1 flex flex-col justify-center items-center gap-6 w-full px-6">
+      
+      <!-- Logo -->
+      <div class="flex justify-center items-end gap-4">
+        <img src="./assets/sprites/coin/frame1.png" class="w-8 mb-3">
+        <span class="block text-4xl text-center [-webkit-text-stroke:7px_#000] [paint-order:stroke_fill]"><span class="text-amber-10">Starr</span><br>Journey</span>
+        <img src="./assets/sprites/coin/frame1.png" class="w-8 mb-3">
+      </div>
+      
+      <span class="block text-xl text-center">Click anywhere to start</span>
     </div>
 
     <!-- Bottom Bar -->
@@ -119,14 +134,12 @@
         <span class="block text-3xl">Game Over.. :(</span>
         <span id="collected-coins-label" class="block text-xl"></span>
         <span id="best-distance" class="block text-xl"></span>
-        <button id="retry-btn" class="block text-lg text-green-10 pointer-events-auto cursor-pointer">Click me to retry</button>
+        <button id="retry-btn" class="block text-lg text-green-10 pointer-events-auto cursor-pointer">Retry?</button>
       </div>
     </div>
 
     <!-- Bottom Bar -->
-    <div class="flex justify-between items-center w-full">
-      
-    </div>
+    <div class="flex justify-between items-center w-full"></div>
     
   </div>
 
