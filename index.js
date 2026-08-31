@@ -26,6 +26,7 @@ k.loadSprite("rock-lg", "./assets/sprites/rocks/rock-lg.png");
 k.loadSprite("rock-sm-b", "./assets/sprites/rocks/rock-sm-b.png");
 k.loadSprite("rock-md-b", "./assets/sprites/rocks/rock-md-b.png");
 k.loadSprite("rock-lg-b", "./assets/sprites/rocks/rock-lg-b.png");
+
 k.loadSprite(
   "coin",
   [
@@ -49,6 +50,58 @@ k.loadSprite(
     }
   }
 );
+
+k.loadSprite("spark", "./assets/sprites/coin/spark.png", {
+  sliceX: 7,
+  sliceY: 1,
+  anims: {
+    spark: {
+      from: 0,
+      to: 6,
+      speed: 21,
+      loop: false
+    }
+  }
+});
+
+k.loadSprite("explosion-sm", "./assets/sprites/explosions/explosion-sm.png", {
+  sliceX: 8,
+  sliceY: 1,
+  anims: {
+    explode: {
+      from: 0,
+      to: 7,
+      speed: 16,
+      loop: false
+    }
+  }
+});
+
+k.loadSprite("explosion-md", "./assets/sprites/explosions/explosion-md.png", {
+  sliceX: 8,
+  sliceY: 1,
+  anims: {
+    explode: {
+      from: 0,
+      to: 7,
+      speed: 16,
+      loop: false
+    }
+  }
+});
+
+k.loadSprite("explosion-lg", "./assets/sprites/explosions/explosion-lg.png", {
+  sliceX: 7,
+  sliceY: 1,
+  anims: {
+    explode: {
+      from: 0,
+      to: 6,
+      speed: 16,
+      loop: false
+    }
+  }
+});
 
 // ------------------------------
 // Load sounds
@@ -91,7 +144,6 @@ function enterGame() {
 }
 
 function gameOver() {
-  k.addKaboom(starr.pos);
   starr.destroy();
   died = true;
   
@@ -250,9 +302,9 @@ const GAME_ITEMS = [
   { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
 
-  { name: "rock-sm-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 100 },
-  { name: "rock-md-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 100 },
-  { name: "rock-lg-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 100 },
+  { name: "rock-sm-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
+  { name: "rock-md-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
+  { name: "rock-lg-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
 
 ];
 
@@ -320,43 +372,85 @@ let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
 // Init coin label
 coinLabel.innerText = coins;
 
-function addCoins(num) {
+function addCoins(num, coinPos) {
   coins += num;
   collectedCoins += num;
   localStorage.setItem(COINS, coins);
   coinLabel.innerText = coins;
+
+  const spark = k.add([
+    k.sprite("spark"),
+    k.pos(coinPos),
+    k.scale(2),
+    k.opacity(0.75),
+    k.anchor("top"),
+    k.z(100)
+  ]);
+
+  // Play animation and destroy when finished
+  spark.play("spark");
+  spark.onAnimEnd(() => {
+    spark.destroy();
+  });
+
 }
 
 starr.onCollide("coin", (coin) => {
   if (!isInGame) return;
+
+  // Destroy and add coin, play sfx
   coin.destroy();
-  addCoins(1);
+  addCoins(1, coin.pos);
   k.play(k.choose(["coin1", "coin2", "coin3"]), { volume: 0.8 });
 });
 
 // Rocks
 const healthBar = document.getElementById("health-bar");
-let health = 4;
-function changeHealth(num) {
+let health = 100;
+function changeHealth(num, rockPos) {
   health += num;
-  healthBar.src = `./assets/sprites/health-bar/${health * 25}.png`;
+  healthBar.src = `./assets/sprites/health-bar/${health}.png`;
 
   // Destroy Starr when health < 0
   if (health <= 0) {
     health = 0;
     gameOver();
+    explode(rockPos, true);
     k.play("explosion2", { volume: 1.2 });
   } else {
+    explode(rockPos)
     k.play("explosion1", { volume: 0.8 });
   }
+
+}
+
+function explode(rockPos, fatal = false) {
+  const type = fatal ? "explosion-lg" : k.choose(["explosion-sm", "explosion-md"]);
+  const explosion = k.add([
+    k.sprite(type),
+    k.pos(rockPos),
+    k.scale(fatal ? 5 : 3),
+    k.anchor("center"),
+    k.z(100)
+  ]);
+
+  // Play animation and destroy when finished
+  explosion.play("explode");
+  explosion.onAnimEnd(() => {
+    explosion.destroy();
+  });
 
 }
 
 starr.onCollide("rock", (rock) => {
   if (isInvincible || !isInGame) return;
   isInvincible = true;
+
+  // Destroy rock and reduce health
   rock.destroy();
-  changeHealth(-1);
+  changeHealth(-25, rock.pos);
+
+  // Invincible for 2 second
   setTimeout(() => {
     isInvincible = false;
     starr.opacity = 1;
