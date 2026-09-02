@@ -10,6 +10,8 @@ const k = kaplay({
 });
 const METERS = "starr_meters";
 const COINS = "starr_coins";
+const minX = (k.width() / 2) - 240;
+const maxX = (k.width() / 2) + 240;
 let meters = 0;
 let collectedCoins = 0;
 let isInGame = false;
@@ -64,7 +66,7 @@ k.loadSprite(
       spark: {
         from: 0,
         to: 3,
-        speed: 20,
+        speed: 25,
         loop: false
       }
     }
@@ -171,8 +173,8 @@ function gameOver() {
   setTimeout(() => {
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
-    collectedCoinsLabel.innerHTML = `Collected <span class="text-2xl font-bold">${collectedCoins}</span> <img src="./assets/sprites/coin/frame1.png" class="inline w-6 h-6">`;
-    bestDistanceLabel.innerHTML = `Best Distance <span class="text-2xl text-red-10 font-bold">${bestDistance}m</span>`;
+    collectedCoinsLabel.innerHTML = `Collected <span class="text-2xl">${collectedCoins}</span> <img src="./assets/sprites/coin/frame1.png" class="inline w-6 h-6">`;
+    bestDistanceLabel.innerHTML = `Best Distance <span class="text-2xl text-red-10">${bestDistance}m</span>`;
   }, 1000);
 
 }
@@ -215,9 +217,12 @@ starr.onUpdate(() => {
 
   if (isInGame) {
     if (controlling) {
+      
       // Make Starr follow mouse smoothly
-      const targetX = k.toWorld(k.mousePos()).x;
+      const mouseX = k.toWorld(k.mousePos()).x;
+      const targetX = k.clamp(mouseX, minX, maxX);
       starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
+      
     } else {
       starr.pos.x = k.lerp(starr.pos.x, baseX, 0.1);
     }
@@ -365,7 +370,7 @@ k.loop(0.1, () => {
 
     const item = k.add([
       k.sprite(itemConfig.name, itemConfig.anim || {}),
-      k.pos(k.rand(0, k.width()), -500),
+      k.pos(k.rand(minX, maxX), -500),
       k.scale(randomScale),
       k.rotate(k.rand(0, 360)),
       k.anchor("center"),
@@ -403,12 +408,20 @@ function addCoins(num, coinPos) {
   const spark = k.add([
     k.sprite("spark"),
     k.pos(coinPos),
-    k.scale(4),
+    k.rotate(k.rand(0, 360)),
+    k.scale(3),
     k.opacity(1),
-    k.anchor("top"),
+    k.anchor("center"),
     k.z(100)
   ]);
-
+  
+  const spinSpeed = k.rand(-360, 360);
+  const scaleSpeed = k.rand(-1.5, 1.5);
+  spark.onUpdate(() => {
+    spark.angle += spinSpeed * k.dt();
+    spark.scale = spark.scale.sub(k.vec2(6 * k.dt()));
+  });
+  
   // Play animation and destroy when finished
   spark.play("spark");
   spark.onAnimEnd(() => {
