@@ -50,7 +50,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
   <script>
-    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    const isDevEnv =
+      location.hostname === 'localhost' ||
+      location.hostname === '127.0.0.1' ||
+      location.hostname.endsWith('github.dev');
+    
+    if (isDevEnv) {
       fetch('./input.css')
         .then(res => res.text())
         .then(cssContent => {

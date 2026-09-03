@@ -2,9 +2,11 @@
   "name": "Starr Journey",
   "version": "1.0.0",
   "scripts": {
-    "build": "npx @tailwindcss/cli -i ./input.css -o ./output.css --minify"
+    "build": "npx @tailwindcss/cli -i ./input.css -o ./output.css --minify",
+    "dev": "vite --host"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.0.0"
+    "@tailwindcss/cli": "^4.0.0",
+    "vite": "^8.2.2"
   }
 }
