@@ -78,8 +78,8 @@ k.loadSprite(
 );
 
 // Pickups
-k.loadSprite("health-potion", "./assets/sprites/health-potion.png");
-k.loadSprite("dash-potion", "./assets/sprites/dash-potion.png");
+k.loadSprite("health-potion", "./assets/sprites/pickups/health-potion.png");
+k.loadSprite("dash-potion", "./assets/sprites/pickups/dash-potion.png");
 
 // Explosion animations
 k.loadSprite("explosion-sm", "./assets/sprites/explosions/explosion-sm.png", {
@@ -338,13 +338,15 @@ const GAME_ITEMS = [
   {
     name: "health-potion",
     type: "health-potion",
-    weight: 0.25
+    weight: 0.5,
+    scale: [1, 1.25]
   },
   
   {
     name: "dash-potion",
     type: "dash-potion",
-    weight: 1,
+    weight: 1.5,
+    scale: [1, 1.25]
   },
   
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
