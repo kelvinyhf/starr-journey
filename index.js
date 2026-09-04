@@ -13,6 +13,7 @@ const COINS = "starr_coins";
 const minX = (k.width() / 2) - 240;
 const maxX = (k.width() / 2) + 240;
 let meters = 0;
+let speed = 1;
 let collectedCoins = 0;
 let isInGame = false;
 let isInvincible = false;
@@ -22,6 +23,8 @@ let died = false;
 // Load sprites
 // ------------------------------
 k.loadSprite("starr", "./assets/sprites/starr.png");
+
+// Rocks
 k.loadSprite("rock-sm", "./assets/sprites/rocks/rock-sm.png");
 k.loadSprite("rock-md", "./assets/sprites/rocks/rock-md.png");
 k.loadSprite("rock-lg", "./assets/sprites/rocks/rock-lg.png");
@@ -29,6 +32,7 @@ k.loadSprite("rock-sm-b", "./assets/sprites/rocks/rock-sm-b.png");
 k.loadSprite("rock-md-b", "./assets/sprites/rocks/rock-md-b.png");
 k.loadSprite("rock-lg-b", "./assets/sprites/rocks/rock-lg-b.png");
 
+// Coin
 k.loadSprite(
   "coin",
   [
@@ -73,6 +77,11 @@ k.loadSprite(
   }
 );
 
+// Pickups
+k.loadSprite("health-potion", "./assets/sprites/health-potion.png");
+k.loadSprite("dash-potion", "./assets/sprites/dash-potion.png");
+
+// Explosion animations
 k.loadSprite("explosion-sm", "./assets/sprites/explosions/explosion-sm.png", {
   sliceX: 8,
   sliceY: 1,
@@ -163,13 +172,13 @@ function enterGame() {
 function gameOver() {
   starr.destroy();
   died = true;
-  
+
   // Set best distance
   if (meters > bestDistance) {
     bestDistance = meters.toFixed(1);
     localStorage.setItem(METERS, meters.toFixed(1));
   }
-  
+
   setTimeout(() => {
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
@@ -217,12 +226,12 @@ starr.onUpdate(() => {
 
   if (isInGame) {
     if (controlling) {
-      
+
       // Make Starr follow mouse smoothly
       const mouseX = k.toWorld(k.mousePos()).x;
       const targetX = k.clamp(mouseX, minX, maxX);
       starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
-      
+
     } else {
       starr.pos.x = k.lerp(starr.pos.x, baseX, 0.1);
     }
@@ -231,10 +240,10 @@ starr.onUpdate(() => {
   // Make it float and spins
   starr.pos.y = baseY + Math.sin(k.time() * 3) * 25;
   starr.angle += 180 * getDifficulty() * k.dt();
-  
+
   // Flash effect when invincible
   if (isInvincible) starr.opacity = k.map(Math.sin(k.time() * 20), -1, 1, 0.25, 1);
-  
+
 });
 
 // ------------------------------
@@ -254,12 +263,12 @@ k.loop(0.1, () => {
     k.z(1),
     "star"
   ]);
-  
+
   star.onUpdate(() => {
     star.pos.y += randomSpeed * k.dt();
     if (star.pos.y > k.height() + 50) star.destroy();
   });
-  
+
 });
 
 // Second layer (furthest)
@@ -277,12 +286,12 @@ k.loop(0.025, () => {
     k.z(0),
     "star"
   ]);
-  
+
   star.onUpdate(() => {
     star.pos.y += randomSpeed * k.dt();
     if (star.pos.y > k.height() + 50) star.destroy();
   });
-  
+
 });
 
 // Third layer (closest)
@@ -300,12 +309,12 @@ k.loop(0.5, () => {
     k.z(2),
     "star"
   ]);
-  
+
   star.onUpdate(() => {
     star.pos.y += randomSpeed * k.dt();
     if (star.pos.y > k.height() + 50) star.destroy();
   });
-  
+
 });
 
 // ------------------------------
@@ -318,11 +327,24 @@ const MENU_ITEMS = [
 ];
 
 const GAME_ITEMS = [
+
   {
     name: "coin",
     type: "coin",
     weight: 3,
     anim: { anim: "idle" }
+  },
+
+  {
+    name: "health-potion",
+    type: "health-potion",
+    weight: 0.25
+  },
+  
+  {
+    name: "dash-potion",
+    type: "dash-potion",
+    weight: 1,
   },
   
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
@@ -353,7 +375,7 @@ k.loop(0.1, () => {
   itemTimer += 0.1;
   const baseInterval = isInGame ? 0.5 : 0.75;
   const targetInterval = baseInterval / getDifficulty();
-  
+
   if (itemTimer >= targetInterval) {
     itemTimer = 0;
 
@@ -379,9 +401,9 @@ k.loop(0.1, () => {
       itemConfig.type,
       "item"
     ]);
-    
+
     const spinSpeed = k.rand(-120, 120);
-    
+
     // Drop and spin
     item.onUpdate(() => {
       item.pos.y += randomSpeed * k.dt();
@@ -414,14 +436,14 @@ function addCoins(num, coinPos) {
     k.anchor("center"),
     k.z(100)
   ]);
-  
+
   const spinSpeed = k.rand(-360, 360);
   const scaleSpeed = k.rand(-1.5, 1.5);
   spark.onUpdate(() => {
     spark.angle += spinSpeed * k.dt();
     spark.scale = spark.scale.sub(k.vec2(6 * k.dt()));
   });
-  
+
   // Play animation and destroy when finished
   spark.play("spark");
   spark.onAnimEnd(() => {
@@ -474,7 +496,7 @@ function explode(rockPos, fatal = false) {
   explosion.onAnimEnd(() => explosion.destroy());
   starr.shader = "flash";
   setTimeout(() => starr.shader = null, 100);
-  
+
 }
 
 starr.onCollide("rock", (rock) => {
@@ -506,6 +528,6 @@ function truncTo(num, decimals) {
 
 k.onUpdate(() => {
   if (!isInGame || died) return;
-  meters += k.dt();
+  meters += speed * k.dt();
   meterCounter.innerText = meters.toFixed(1) + "m";
 });
