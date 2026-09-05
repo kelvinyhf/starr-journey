@@ -79,7 +79,7 @@ k.loadSprite(
 
 // Pickups
 k.loadSprite("health-potion", "./assets/sprites/pickups/health-potion.png");
-k.loadSprite("dash-potion", "./assets/sprites/pickups/dash-potion.png");
+k.loadSprite("speed-potion", "./assets/sprites/pickups/speed-potion.png");
 
 // Explosion animations
 k.loadSprite("explosion-sm", "./assets/sprites/explosions/explosion-sm.png", {
@@ -126,7 +126,6 @@ k.loadSprite("explosion-lg", "./assets/sprites/explosions/explosion-lg.png", {
 // ------------------------------
 k.loadSound("coin1", "./assets/sounds/coin1.wav");
 k.loadSound("coin2", "./assets/sounds/coin2.wav");
-k.loadSound("coin3", "./assets/sounds/coin3.wav");
 k.loadSound("explosion1", "./assets/sounds/explosion1.wav");
 k.loadSound("explosion2", "./assets/sounds/explosion2.wav");
 k.loadSound("gameover", "./assets/sounds/gameover.wav");
@@ -189,7 +188,7 @@ function gameOver() {
 }
 
 function getDifficulty() {
-  return Math.min(1 + (meters / 20) * 0.25, 5);
+  return Math.min(1 + (meters / 20) * 0.025, 5);
 }
 
 menuUI.addEventListener("click", () => enterGame());
@@ -328,34 +327,18 @@ const MENU_ITEMS = [
 
 const GAME_ITEMS = [
 
-  {
-    name: "coin",
-    type: "coin",
-    weight: 3,
-    anim: { anim: "idle" }
-  },
-
-  {
-    name: "health-potion",
-    type: "health-potion",
-    weight: 0.5,
-    scale: [1, 1.25]
-  },
-  
-  {
-    name: "dash-potion",
-    type: "dash-potion",
-    weight: 1.5,
-    scale: [1, 1.25]
-  },
-  
+  // Basic Items (Coin and Rocks)
+  { name: "coin", type: "coin", weight: 3, anim: { anim: "idle" } },
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
-
   { name: "rock-sm-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
   { name: "rock-md-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
   { name: "rock-lg-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
+
+  // Pickups
+  { name: "health-potion", type: "health-potion", weight: 0.25, scale: [1, 1.25] },
+  { name: "speed-potion", type: "speed-potion", weight: 5, scale: [1, 1.25] },
 
 ];
 
@@ -460,7 +443,7 @@ starr.onCollide("coin", (coin) => {
   // Destroy and add coin, play sfx
   coin.destroy();
   addCoins(1, coin.pos);
-  k.play(k.choose(["coin1", "coin2", "coin3"]), { volume: 0.8 });
+  k.play(k.choose(["coin1", "coin2"]), { volume: 0.75 });
 });
 
 // Rocks
@@ -468,17 +451,37 @@ const healthBar = document.getElementById("health-bar");
 let health = 100;
 function changeHealth(num, rockPos) {
   health += num;
-  healthBar.src = `./assets/sprites/health-bar/${health}.png`;
-
-  // Destroy Starr when health < 0
-  if (health <= 0) {
+  if (health > 125) {
+    health = 125;
+  } else if (health < 0) {
     health = 0;
-    gameOver();
-    explode(rockPos, true);
-    k.play("explosion2", { volume: 1.2 });
-  } else {
-    explode(rockPos)
-    k.play("explosion1", { volume: 0.8 });
+  }
+
+  if (health <= 0) {
+    healthBar.src = "./assets/sprites/health-bar/0.png";
+  } else if (health <= 25) {
+    healthBar.src = "./assets/sprites/health-bar/25.png";
+  } else if (health <= 50) {
+    healthBar.src = "./assets/sprites/health-bar/50.png";
+  } else if (health <= 75) {
+    healthBar.src = "./assets/sprites/health-bar/75.png";
+  } else if (health <= 100) {
+    healthBar.src = "./assets/sprites/health-bar/100.png";
+  } else if (health <= 125) {
+    healthBar.src = "./assets/sprites/health-bar/125.png";
+  }
+  
+  // Destroy Starr when health < 0
+  if (rockPos) {
+    if (health <= 0) {
+      health = 0;
+      gameOver();
+      explode(rockPos, true);
+      k.play("explosion2", { volume: 1.2 });
+    } else {
+      explode(rockPos)
+      k.play("explosion1", { volume: 0.8 });
+    }
   }
 
 }
@@ -514,6 +517,31 @@ starr.onCollide("rock", (rock) => {
     isInvincible = false;
     starr.opacity = 1;
   }, 2000);
+});
+
+// Health Potion
+starr.onCollide("health-potion", (potion) => {
+  if (!isInGame) return;
+
+  // Destroy potion and increase health
+  potion.destroy();
+  changeHealth(+25);
+});
+
+// Speed Potion
+starr.onCollide("speed-potion", (potion) => {
+  if (!isInGame) return;
+
+  // Destroy potion and increase speed
+  potion.destroy();
+  speed += 0.5;
+
+  // Speed up for 5 seconds
+  speed += 25;
+  setTimeout(() => {
+    speed -= 25;
+  }, 5000);
+
 });
 
 // ------------------------------
