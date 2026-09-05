@@ -70,16 +70,56 @@ k.loadSprite(
       spark: {
         from: 0,
         to: 3,
-        speed: 25,
+        speed: 28,
         loop: false
       }
     }
   }
 );
 
-// Pickups
+// Health Potion
 k.loadSprite("health-potion", "./assets/sprites/pickups/health-potion.png");
+k.loadSprite(
+  "recover",
+  [
+    "./assets/sprites/recover/frame1.png",
+    "./assets/sprites/recover/frame2.png",
+    "./assets/sprites/recover/frame3.png",
+    "./assets/sprites/recover/frame4.png"
+  ],
+  {
+    anims: {
+      recover: {
+        from: 0,
+        to: 3,
+        speed: 20,
+        loop: false
+      }
+    }
+  }
+);
+
+// Speed Potion
 k.loadSprite("speed-potion", "./assets/sprites/pickups/speed-potion.png");
+k.loadSprite(
+  "speedup",
+  [
+    "./assets/sprites/speedup/frame1.png",
+    "./assets/sprites/speedup/frame2.png",
+    "./assets/sprites/speedup/frame3.png",
+    "./assets/sprites/speedup/frame4.png"
+  ],
+  {
+    anims: {
+      speedup: {
+        from: 0,
+        to: 3,
+        speed: 20,
+        loop: false
+      }
+    }
+  }
+);
 
 // Explosion animations
 k.loadSprite("explosion-sm", "./assets/sprites/explosions/explosion-sm.png", {
@@ -216,23 +256,34 @@ const starr = k.add([
 starr.shader = null;
 
 let controlling = false;
+let invincibleOnStart = false;
 starr.onUpdate(() => {
 
   // Mark when mouse entered the canva
   if (!controlling) {
     if (k.mousePos().x !== 0 || k.mousePos().y !== 0) controlling = true;
   }
-
+  
   if (isInGame) {
     if (controlling) {
 
       // Make Starr follow mouse smoothly
       const mouseX = k.toWorld(k.mousePos()).x;
       const targetX = k.clamp(mouseX, minX, maxX);
-      starr.pos.x = k.lerp(starr.pos.x, targetX, 0.1);
+      starr.pos.x = k.lerp(starr.pos.x, targetX, 0.15);
 
     } else {
-      starr.pos.x = k.lerp(starr.pos.x, baseX, 0.1);
+      starr.pos.x = k.lerp(starr.pos.x, baseX, 0.15);
+    }
+    
+    // Invincible on start
+    if (!invincibleOnStart) {
+      invincibleOnStart = true;
+      isInvincible = true;
+      setTimeout(() => {
+        isInvincible = false
+        starr.opacity = 1;
+      }, 1000);
     }
   }
 
@@ -332,13 +383,13 @@ const GAME_ITEMS = [
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
-  { name: "rock-sm-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
-  { name: "rock-md-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
-  { name: "rock-lg-b", type: "rock-b", weight: 0.2, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
+  { name: "rock-sm-b", type: "rock-b", weight: 0.1, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
+  { name: "rock-md-b", type: "rock-b", weight: 0.1, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
+  { name: "rock-lg-b", type: "rock-b", weight: 0.1, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
 
   // Pickups
-  { name: "health-potion", type: "health-potion", weight: 0.25, scale: [1, 1.25] },
-  { name: "speed-potion", type: "speed-potion", weight: 5, scale: [1, 1.25] },
+  { name: "health-potion", type: "health-potion", weight: 0.1, scale: [1, 1.25] },
+  { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25] },
 
 ];
 
@@ -411,30 +462,58 @@ function addCoins(num, coinPos) {
   collectedCoins += num;
   localStorage.setItem(COINS, coins);
   coinLabel.innerText = coins;
+  
+  // Spark and bounce
+  sparkEffect(coinPos);
+  coinBounceEffect(coinPos);
+}
 
+function sparkEffect(coinPos) {
   const spark = k.add([
     k.sprite("spark"),
     k.pos(coinPos),
     k.rotate(k.rand(0, 360)),
-    k.scale(3),
-    k.opacity(1),
+    k.scale(4),
+    k.opacity(0.5),
     k.anchor("center"),
     k.z(100)
   ]);
-
+  
   const spinSpeed = k.rand(-360, 360);
-  const scaleSpeed = k.rand(-1.5, 1.5);
   spark.onUpdate(() => {
     spark.angle += spinSpeed * k.dt();
     spark.scale = spark.scale.sub(k.vec2(6 * k.dt()));
+    spark.opacity -= 2 * k.dt();
   });
-
+  
   // Play animation and destroy when finished
   spark.play("spark");
   spark.onAnimEnd(() => {
     spark.destroy();
   });
+}
 
+function coinBounceEffect(coinPos) {
+  const bounceCoin = k.add([
+    k.sprite("coin", { anim: "idle" }),
+    k.pos(coinPos),
+    k.scale(0.75),
+    k.anchor("center"),
+    k.opacity(1),
+    k.z(100)
+  ]);
+  
+  let velocityY = k.rand(-200, -400);
+  let velocityX = k.rand(-100, 100);
+  
+  bounceCoin.onUpdate(() => {
+    velocityY += 1250 * k.dt();
+    bounceCoin.pos.y += velocityY * k.dt();
+    bounceCoin.pos.x += velocityX * k.dt();
+    bounceCoin.angle += 360 * k.dt();
+    bounceCoin.opacity -= 3 * k.dt();
+    if (bounceCoin.opacity <= 0) bounceCoin.destroy();
+  });
 }
 
 starr.onCollide("coin", (coin) => {
@@ -451,8 +530,8 @@ const healthBar = document.getElementById("health-bar");
 let health = 100;
 function changeHealth(num, rockPos) {
   health += num;
-  if (health > 125) {
-    health = 125;
+  if (health > 100) {
+    health = 100;
   } else if (health < 0) {
     health = 0;
   }
@@ -467,8 +546,6 @@ function changeHealth(num, rockPos) {
     healthBar.src = "./assets/sprites/health-bar/75.png";
   } else if (health <= 100) {
     healthBar.src = "./assets/sprites/health-bar/100.png";
-  } else if (health <= 125) {
-    healthBar.src = "./assets/sprites/health-bar/125.png";
   }
   
   // Destroy Starr when health < 0
@@ -488,6 +565,7 @@ function changeHealth(num, rockPos) {
 
 function explode(rockPos, fatal = false) {
   const type = fatal ? "explosion-lg" : k.choose(["explosion-sm", "explosion-md"]);
+  const shakeIntensity = fatal ? 15 : 7.5;
   const explosion = k.add([
     k.sprite(type),
     k.pos(rockPos),
@@ -496,12 +574,17 @@ function explode(rockPos, fatal = false) {
     k.z(100)
   ]);
 
-  // Play animation and destroy when finished
+  // Play animation
   explosion.play("explode");
   explosion.onAnimEnd(() => explosion.destroy());
+  
+  // Shake screen
+  k.shake(shakeIntensity);
+  
+  // Damage effect (flash) 
   starr.shader = "flash";
   setTimeout(() => starr.shader = null, 100);
-
+  
 }
 
 starr.onCollide("rock", (rock) => {
@@ -520,26 +603,80 @@ starr.onCollide("rock", (rock) => {
 });
 
 // Health Potion
+function recoverEffect() {
+  const recover = k.add([
+    k.sprite("recover"),
+    k.pos(starr.pos),
+    k.scale(3),
+    k.opacity(1),
+    k.anchor("center"),
+    k.z(100)
+  ]);
+  
+  // Fade out effect when anim ended
+  let isFading = false;
+  recover.onUpdate(() => {
+    recover.pos = starr.pos;
+    if (isFading) {
+      recover.opacity -= 1.5 * k.dt();
+      if (recover.opacity <= 0) recover.destroy();
+    }
+  });
+  
+  recover.play("recover");
+  recover.onAnimEnd(() => {
+   isFading = true;
+  });
+}
+
 starr.onCollide("health-potion", (potion) => {
   if (!isInGame) return;
 
   // Destroy potion and increase health
   potion.destroy();
+  recoverEffect();
   changeHealth(+25);
 });
 
 // Speed Potion
+function speedupEffect() {
+  const speedup = k.add([
+    k.sprite("speedup"),
+    k.pos(starr.pos),
+    k.scale(3),
+    k.opacity(1),
+    k.anchor("center"),
+    k.z(100)
+  ]);
+  
+  // Fade out effect when anim ended
+  let isFading = false;
+  speedup.onUpdate(() => {
+    speedup.pos = starr.pos;
+    if (isFading) {
+      speedup.opacity -= 1.5 * k.dt();
+      if (speedup.opacity <= 0) speedup.destroy();
+    }
+  });
+  
+  speedup.play("speedup");
+  speedup.onAnimEnd(() => {
+   isFading = true;
+  });
+}
+
 starr.onCollide("speed-potion", (potion) => {
   if (!isInGame) return;
 
   // Destroy potion and increase speed
   potion.destroy();
+  speedupEffect();
   speed += 0.5;
 
   // Speed up for 5 seconds
-  speed += 25;
+  speed += 15;
   setTimeout(() => {
-    speed -= 25;
+    speed -= 15;
   }, 5000);
 
 });
