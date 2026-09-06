@@ -457,15 +457,18 @@ let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
 // Init coin label
 coinLabel.innerText = coins;
 
-function addCoins(num, coinPos) {
+function changeCoins(num, coinPos) {
   coins += num;
-  collectedCoins += num;
   localStorage.setItem(COINS, coins);
   coinLabel.innerText = coins;
   
-  // Spark and bounce
-  sparkEffect(coinPos);
-  coinBounceEffect(coinPos);
+  // Spark and bounce if coinPos is provided
+  if (coinPos) {
+    collectedCoins += num;
+    sparkEffect(coinPos);
+    coinBounceEffect(coinPos);
+  }
+
 }
 
 function sparkEffect(coinPos) {
@@ -510,8 +513,8 @@ function coinBounceEffect(coinPos) {
     velocityY += 1250 * k.dt();
     bounceCoin.pos.y += velocityY * k.dt();
     bounceCoin.pos.x += velocityX * k.dt();
-    bounceCoin.angle += 360 * k.dt();
-    bounceCoin.opacity -= 3 * k.dt();
+    bounceCoin.angle += 720 * k.dt();
+    bounceCoin.opacity -= 1.5 * k.dt();
     if (bounceCoin.opacity <= 0) bounceCoin.destroy();
   });
 }
@@ -521,17 +524,21 @@ starr.onCollide("coin", (coin) => {
 
   // Destroy and add coin, play sfx
   coin.destroy();
-  addCoins(1, coin.pos);
+  changeCoins(1, coin.pos);
   k.play(k.choose(["coin1", "coin2"]), { volume: 0.75 });
 });
 
 // Rocks
 const healthBar = document.getElementById("health-bar");
 let health = 100;
-function changeHealth(num, rockPos) {
+function changeHealth(num, rockPos, isShield = false) {
   health += num;
   if (health > 100) {
-    health = 100;
+    if (isShield) {
+      health = 125;
+    } else {
+      health = 100;
+    }
   } else if (health < 0) {
     health = 0;
   }
@@ -546,6 +553,8 @@ function changeHealth(num, rockPos) {
     healthBar.src = "./assets/sprites/health-bar/75.png";
   } else if (health <= 100) {
     healthBar.src = "./assets/sprites/health-bar/100.png";
+  } else if (health <= 125) {
+    healthBar.src = "./assets/sprites/health-bar/125.png";
   }
   
   // Destroy Starr when health < 0
@@ -565,7 +574,7 @@ function changeHealth(num, rockPos) {
 
 function explode(rockPos, fatal = false) {
   const type = fatal ? "explosion-lg" : k.choose(["explosion-sm", "explosion-md"]);
-  const shakeIntensity = fatal ? 15 : 7.5;
+  const shakeIntensity = fatal ? 20 : 10;
   const explosion = k.add([
     k.sprite(type),
     k.pos(rockPos),
@@ -697,4 +706,67 @@ k.onUpdate(() => {
   if (!isInGame || died) return;
   meters += speed * k.dt();
   meterCounter.innerText = meters.toFixed(1) + "m";
+});
+
+// ------------------------------
+// Overlay and Modals
+// ------------------------------
+const overlay = document.getElementById("overlay");
+overlay.addEventListener("click", (e) => {
+  e.stopPropagation();
+
+  // Hide overlay and all modals
+  overlay.classList.add("hidden");
+  shopUI.classList.add("hidden");
+
+});
+
+// ------------------------------
+// Shop
+// ------------------------------
+const shopBtn = document.getElementById("shop-btn");
+const shopUI = document.getElementById("shop-ui");
+shopBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  shopUI.classList.remove("hidden");
+  overlay.classList.remove("hidden");
+});
+
+shopUI.addEventListener("click", (e) => {
+  e.stopPropagation();
+});
+
+function boughtItem(btn, failed = false) {
+  if (!failed) {
+    btn.classList.add("pointer-events-none", "cursor-default", "opacity-50");
+    // PLAY SFX
+    // ADD TICK
+  } else {
+    // TURN RED AND FADE BACK
+    // PLAY SFX
+  }
+}
+
+// Shield Item
+const shieldBtn = document.getElementById("item-shield-btn");
+shieldBtn.addEventListener("click", () => {
+  if (coins >= 25) {
+    changeCoins(-25);
+    boughtItem(shieldBtn);
+    changeHealth(25, null, true);
+  } else {
+    boughtItem(shieldBtn, true);
+  }
+});
+
+// Lucky Item
+const luckyBtn = document.getElementById("item-lucky-btn");
+luckyBtn.addEventListener("click", () => {
+  if (coins >= 50) {
+    changeCoins(-50);
+    boughtItem(luckyBtn);
+    // ADD EFFECTS
+  } else {
+    boughtItem(luckyBtn, true);
+  }
 });
