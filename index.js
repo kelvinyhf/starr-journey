@@ -259,6 +259,7 @@ starr.shader = null;
 
 let controlling = false;
 let invincibleOnStart = false;
+let trailTimer = 0;
 starr.onUpdate(() => {
 
   // Mark when mouse entered the canva
@@ -295,6 +296,28 @@ starr.onUpdate(() => {
 
   // Flash effect when invincible
   if (isInvincible) starr.opacity = k.map(Math.sin(k.time() * 20), -1, 1, 0.25, 1);
+
+  // Trail Effect
+  trailTimer += k.dt();
+  if (trailTimer >= 0.05) {
+    trailTimer = 0;
+
+    const trail = k.add([
+      k.sprite("starr"),
+      k.pos(starr.pos),
+      k.scale(0.75),
+      k.anchor("center"),
+      k.opacity(0.5),
+      k.z(starr.z - 1)
+    ]);
+
+    trail.onUpdate(() => {
+      trail.pos.y += 300 * k.dt();
+      trail.scale = trail.scale.sub(k.vec2(1.5 * k.dt()));
+      trail.opacity -= 1.5 * k.dt();
+      if (trail.opacity <= 0) trail.destroy();
+    });
+  }
 
 });
 

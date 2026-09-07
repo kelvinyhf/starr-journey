@@ -8,8 +8,6 @@ A casual web game about Starr dodging obstacles, built with KAPLAY.
 2. Dodge obstacles, collect coins, and try to go as far as you can 🚀
 3. That's it!
 
-(Note that Coins doesn't have any usage yet, will add soon)
-
 ## Try It Now
 Simply click [this link](https://starrjourney.pages.dev) and enjoy! 😀
 
