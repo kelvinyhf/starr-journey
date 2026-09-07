@@ -22,15 +22,14 @@ let died = false;
 // ------------------------------
 // Load sprites
 // ------------------------------
-k.loadSprite("starr", "./assets/sprites/starr.png");
+k.loadSprite("starr", "./assets/sprites/starr/default.png");
+k.loadSprite("starr-green-border", "./assets/sprites/starr/green-border.png");
+k.loadSprite("starr-orange-border", "./assets/sprites/starr/orange-border.png");
 
 // Rocks
 k.loadSprite("rock-sm", "./assets/sprites/rocks/rock-sm.png");
 k.loadSprite("rock-md", "./assets/sprites/rocks/rock-md.png");
 k.loadSprite("rock-lg", "./assets/sprites/rocks/rock-lg.png");
-k.loadSprite("rock-sm-b", "./assets/sprites/rocks/rock-sm-b.png");
-k.loadSprite("rock-md-b", "./assets/sprites/rocks/rock-md-b.png");
-k.loadSprite("rock-lg-b", "./assets/sprites/rocks/rock-lg-b.png");
 
 // Coin
 k.loadSprite(
@@ -168,6 +167,9 @@ k.loadSound("coin1", "./assets/sounds/coin1.wav");
 k.loadSound("coin2", "./assets/sounds/coin2.wav");
 k.loadSound("explosion1", "./assets/sounds/explosion1.wav");
 k.loadSound("explosion2", "./assets/sounds/explosion2.wav");
+k.loadSound("buff1", "./assets/sounds/buff1.wav");
+k.loadSound("buff2", "./assets/sounds/buff2.wav");
+k.loadSound("buff3", "./assets/sounds/buff3.wav");
 k.loadSound("gameover", "./assets/sounds/gameover.wav");
 k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
 k.loadSound("Pixelland", "./assets/sounds/Pixelland.mp3");
@@ -383,9 +385,6 @@ const GAME_ITEMS = [
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
-  { name: "rock-sm-b", type: "rock-b", weight: 0.1, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
-  { name: "rock-md-b", type: "rock-b", weight: 0.1, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
-  { name: "rock-lg-b", type: "rock-b", weight: 0.1, scale: [0.75, 1.25], speed: [1250, 1500], zIndex: 199 },
 
   // Pickups
   { name: "health-potion", type: "health-potion", weight: 0.1, scale: [1, 1.25] },
@@ -634,8 +633,27 @@ function recoverEffect() {
   
   recover.play("recover");
   recover.onAnimEnd(() => {
-   isFading = true;
+    isFading = true;
+    
+    // Green border effect
+    const border = k.add([
+      k.sprite("starr-green-border"),
+      k.pos(starr.pos),
+      k.opacity(0.75),
+      k.rotate(starr.angle),
+      k.anchor("center"),
+      k.z(starr.z - 1)
+    ]);
+    
+    border.onUpdate(() => {
+      border.pos = starr.pos;
+      border.angle = starr.angle;
+      border.opacity -= 1.5 * k.dt();
+      if (border.opacity <= 0) border.destroy();
+    });
+    
   });
+  
 }
 
 starr.onCollide("health-potion", (potion) => {
@@ -645,6 +663,7 @@ starr.onCollide("health-potion", (potion) => {
   potion.destroy();
   recoverEffect();
   changeHealth(+25);
+  k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
 });
 
 // Speed Potion
@@ -670,8 +689,27 @@ function speedupEffect() {
   
   speedup.play("speedup");
   speedup.onAnimEnd(() => {
-   isFading = true;
+    isFading = true;
+    
+    // Orange border effect
+    const border = k.add([
+      k.sprite("starr-orange-border"),
+      k.pos(starr.pos),
+      k.opacity(0.75),
+      k.rotate(starr.angle),
+      k.anchor("center"),
+      k.z(starr.z - 1)
+    ]);
+    
+    border.onUpdate(() => {
+      border.pos = starr.pos;
+      border.angle = starr.angle;
+      border.opacity -= 1.5 * k.dt();
+      if (border.opacity <= 0) border.destroy();
+    });
+    
   });
+  
 }
 
 starr.onCollide("speed-potion", (potion) => {
@@ -680,14 +718,8 @@ starr.onCollide("speed-potion", (potion) => {
   // Destroy potion and increase speed
   potion.destroy();
   speedupEffect();
-  speed += 0.5;
-
-  // Speed up for 5 seconds
-  speed += 15;
-  setTimeout(() => {
-    speed -= 15;
-  }, 5000);
-
+  speed += 0.75;
+  k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
 });
 
 // ------------------------------

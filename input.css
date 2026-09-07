@@ -298,6 +298,16 @@
   }
 }
 
+@utility pixel-frame {
+  border-width: 9px;
+  border-style: solid;
+  border-color: transparent;
+  border-image-source: url("./assets/images/pixel-frame.png");
+  border-image-slice: 3;
+  border-image-repeat: repeat;
+  image-rendering: pixelated;
+}
+
 /* PWA Support */
 body {
   width: 100dvw;
