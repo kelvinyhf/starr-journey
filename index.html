@@ -139,33 +139,8 @@
 
     <!-- Shop UI -->
     <div id="shop-ui" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[rgba(0,0,0,0.85)] pixel-frame p-8 text-center flex flex-col justify-center items-center gap-4 z-99">
-      <span class="block text-2xl">Shop</span>
-      
-      <!-- Shop Items -->
-      <div class="flex justify-center items-center gap-6">
-
-        <!-- Shield -->
-        <button id="item-shield-btn" class="flex flex-col justify-center items-center gap-1 cursor-pointer">
-          <!-- ADD ICON -->
-          <span class="block text-xl">Shield</span>
-          <div class="flex justify-between gap-2 items-center">
-            <img src="./assets/sprites/coin/frame1.png" class="w-5 h-5">
-            <span class="text-lg [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">25</span>
-          </div>
-        </button>
-        
-        <!-- Lucky -->
-        <button id="item-lucky-btn" class="flex flex-col justify-center items-center gap-1 cursor-pointer">
-          <!-- ADD ICON -->
-          <span class="block text-xl">Lucky</span>
-          <div class="flex justify-between gap-2 items-center">
-            <img src="./assets/sprites/coin/frame1.png" class="w-5 h-5">
-            <span class="text-lg [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">50</span>
-          </div>
-        </button>
-
-      </div>
-
+      <span class="block text-2xl">Today's Shop</span>
+      <div id="shop-items" class="flex justify-center items-center gap-6"></div>
     </div>
 
   </div>

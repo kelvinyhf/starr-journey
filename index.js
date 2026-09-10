@@ -305,16 +305,17 @@ starr.onUpdate(() => {
     const trail = k.add([
       k.sprite("starr"),
       k.pos(starr.pos),
+      k.rotate(starr.angle),
       k.scale(0.75),
       k.anchor("center"),
-      k.opacity(0.5),
+      k.opacity(0.25),
       k.z(starr.z - 1)
     ]);
 
     trail.onUpdate(() => {
       trail.pos.y += 300 * k.dt();
       trail.scale = trail.scale.sub(k.vec2(1.5 * k.dt()));
-      trail.opacity -= 1.5 * k.dt();
+      trail.opacity -= 0.5 * k.dt();
       if (trail.opacity <= 0) trail.destroy();
     });
   }
@@ -411,7 +412,7 @@ const GAME_ITEMS = [
 
   // Pickups
   { name: "health-potion", type: "health-potion", weight: 0.1, scale: [1, 1.25] },
-  { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25] },
+  { name: "speed-potion", type: "speed-potion", weight: 0.2, scale: [1, 1.25] },
 
 ];
 
@@ -547,7 +548,7 @@ starr.onCollide("coin", (coin) => {
   // Destroy and add coin, play sfx
   coin.destroy();
   changeCoins(1, coin.pos);
-  k.play(k.choose(["coin1", "coin2"]), { volume: 0.75 });
+  k.play(k.choose(["coin1", "coin2"]), { volume: 0.5 });
 });
 
 // Rocks
@@ -685,7 +686,11 @@ starr.onCollide("health-potion", (potion) => {
   // Destroy potion and increase health
   potion.destroy();
   recoverEffect();
-  changeHealth(+25);
+  if (health > 100) {
+    changeHealth(+25, null, true);
+  } else {
+    changeHealth(+25);
+  }
   k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
 });
 
@@ -777,12 +782,120 @@ overlay.addEventListener("click", (e) => {
 });
 
 // ------------------------------
+// Shop Items
+// ------------------------------
+const SHOP_ITEMS = [
+  {
+    id: "item-shield-btn",
+    name: "Shield",
+    currency: "./assets/sprites/coin/frame1.png",
+    price: 50,
+    icon: "TODO",
+    onBuy: (shieldBtn) => {
+      if (coins >= 50) {
+        changeCoins(-50);
+        boughtItem(shieldBtn);
+        changeHealth(25, null, true);
+      } else {
+        boughtItem(shieldBtn, true);
+      }
+    }
+  },
+  {
+    id: "item-lucky-btn",
+    name: "Lucky",
+    currency: "./assets/sprites/coin/frame1.png",
+    price: 50,
+    icon: "TODO",
+    onBuy: (luckyBtn) => {
+      if (coins >= 50) {
+        changeCoins(-50);
+        boughtItem(luckyBtn);
+        // ADD EFFECTS
+      } else {
+        boughtItem(luckyBtn, true);
+      }
+    }
+  },
+  {
+    id: "item-speedy-btn",
+    name: "Speedy",
+    currency: "./assets/sprites/coin/frame1.png",
+    price: 50,
+    icon: "TODO",
+    onBuy: (speedyBtn) => {
+      if (coins >= 50) {
+        changeCoins(-50);
+        boughtItem(speedyBtn);
+        // ADD EFFECTS
+      } else {
+        boughtItem(speedyBtn, true);
+      }
+    }
+  }
+];
+
+const SAVED_SHOP_DATE = "starr_shop_date";
+const SAVED_SHOP_ITEMS = "starr_shop_items";
+function getShopItems() {
+  const today = new Date().toISOString().split("T")[0];
+  const savedDate = localStorage.getItem(SAVED_SHOP_DATE);
+  const savedItemIds = localStorage.getItem(SAVED_SHOP_ITEMS);
+  let itemIds = [];
+
+  // If saved date is today return the saved items
+  if (savedDate === today && savedItemIds) {
+    itemIds = JSON.parse(savedItemIds);
+  } else {
+
+    // Choose three random items' id
+    const newItems = k.chooseMultiple(SHOP_ITEMS, 3);
+    itemIds = newItems.map(item => item.id);
+
+    localStorage.setItem(SAVED_SHOP_DATE, today);
+    localStorage.setItem(SAVED_SHOP_ITEMS, JSON.stringify(newItems));
+  }
+
+  // Return those ids' item objects
+  return itemIds.map(id => SHOP_ITEMS.find(item => item.id === id));
+}
+
+function renderShopItems() {
+  const shopItemsContainer = document.getElementById("shop-items");
+  const todayItems = getShopItems();
+  
+  // Clear old items
+  shopItemsContainer.innerHTML = "";
+  
+  // Render new items
+  todayItems.forEach((item) => {
+    const itemElement = document.createElement("button");
+    itemElement.id = item.id;
+    itemElement.className = "flex flex-col justify-center items-center gap-1 cursor-pointer";
+    itemElement.innerHTML = `
+      <!-- ADD ICON HERE -->
+      <span class="block text-xl">${item.name}</span>
+      <div class="flex justify-between items-center gap-2">
+        <img src="${item.currency}" class="w-5 h-5">
+        <span class="text-lg">${item.price}</span>
+      </div>
+    `;
+
+    // Add item to DOM and click event listener
+    shopItemsContainer.appendChild(itemElement);
+    itemElement.addEventListener("click", () => item.onBuy(itemElement));
+  });
+
+}
+
+// ------------------------------
 // Shop
 // ------------------------------
 const shopBtn = document.getElementById("shop-btn");
 const shopUI = document.getElementById("shop-ui");
 shopBtn.addEventListener("click", (e) => {
   e.stopPropagation();
+  renderShopItems();
   shopUI.classList.remove("hidden");
   overlay.classList.remove("hidden");
 });
@@ -801,27 +914,3 @@ function boughtItem(btn, failed = false) {
     // PLAY SFX
   }
 }
-
-// Shield Item
-const shieldBtn = document.getElementById("item-shield-btn");
-shieldBtn.addEventListener("click", () => {
-  if (coins >= 25) {
-    changeCoins(-25);
-    boughtItem(shieldBtn);
-    changeHealth(25, null, true);
-  } else {
-    boughtItem(shieldBtn, true);
-  }
-});
-
-// Lucky Item
-const luckyBtn = document.getElementById("item-lucky-btn");
-luckyBtn.addEventListener("click", () => {
-  if (coins >= 50) {
-    changeCoins(-50);
-    boughtItem(luckyBtn);
-    // ADD EFFECTS
-  } else {
-    boughtItem(luckyBtn, true);
-  }
-});
