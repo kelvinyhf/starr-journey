@@ -280,14 +280,10 @@
     color: var(--gray-12);
   }
   
-  :focus {
+  :focus, :focus-visible {
     outline: none;
   }
-
-  :focus-visible {
-    outline: 1px solid var(--gray-12);
-  }
-
+  
 }
 
 @utility no-scrollbar {
@@ -298,14 +294,15 @@
   }
 }
 
+
+
 @utility pixel-frame {
-  border-width: 9px;
   border-style: solid;
-  border-color: transparent;
+  border-width: 12px;
+  border-image-width: 12px;
   border-image-source: url("./assets/images/pixel-frame.png");
-  border-image-slice: 3;
-  border-image-repeat: repeat;
-  image-rendering: pixelated;
+  border-image-slice: 24;
+  border-radius: 12px;
 }
 
 /* PWA Support */

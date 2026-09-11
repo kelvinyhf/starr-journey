@@ -10,11 +10,13 @@ const k = kaplay({
 });
 const METERS = "starr_meters";
 const COINS = "starr_coins";
+const SILVER_COIN = "starr_silver_coins";
 const minX = (k.width() / 2) - 240;
 const maxX = (k.width() / 2) + 240;
 let meters = 0;
 let speed = 1;
 let collectedCoins = 0;
+let collectedSilverCoins = 0;
 let isInGame = false;
 let isInvincible = false;
 let died = false;
@@ -63,6 +65,51 @@ k.loadSprite(
     "./assets/sprites/spark/frame2.png",
     "./assets/sprites/spark/frame3.png",
     "./assets/sprites/spark/frame4.png"
+  ],
+  {
+    anims: {
+      spark: {
+        from: 0,
+        to: 3,
+        speed: 28,
+        loop: false
+      }
+    }
+  }
+);
+
+// Silver Coin
+k.loadSprite(
+  "silver-coin",
+  [
+    "./assets/sprites/silver-coin/frame1.png",
+    "./assets/sprites/silver-coin/frame2.png",
+    "./assets/sprites/silver-coin/frame3.png",
+    "./assets/sprites/silver-coin/frame4.png",
+    "./assets/sprites/silver-coin/frame5.png",
+    "./assets/sprites/silver-coin/frame6.png",
+    "./assets/sprites/silver-coin/frame7.png",
+    "./assets/sprites/silver-coin/frame8.png"
+  ],
+  {
+    anims: {
+      idle: {
+        from: 0,
+        to: 7,
+        speed: 8,
+        loop: true
+      }
+    }
+  }
+);
+
+k.loadSprite(
+  "silver-spark",
+  [
+    "./assets/sprites/silver-spark/frame1.png",
+    "./assets/sprites/silver-spark/frame2.png",
+    "./assets/sprites/silver-spark/frame3.png",
+    "./assets/sprites/silver-spark/frame4.png"
   ],
   {
     anims: {
@@ -223,8 +270,10 @@ function gameOver() {
   setTimeout(() => {
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
-    collectedCoinsLabel.innerHTML = `Collected <span class="text-2xl">${collectedCoins}</span> <img src="./assets/sprites/coin/frame1.png" class="inline w-6 h-6">`;
-    bestDistanceLabel.innerHTML = `Best Distance <span class="text-2xl text-red-10">${bestDistance}m</span>`;
+    collectedCoinsLabel.innerHTML = `
+      Collected <img src="./assets/sprites/coin/frame1.png" class="inline w-5 h-5"> <span class="text-xl">${collectedCoins}</span>
+      and <img src="./assets/sprites/silver-coin/frame1.png" class="inline w-5 h-5"> <span class="text-xl">${collectedSilverCoins}</span>`;
+    bestDistanceLabel.innerHTML = `Best Distance <span class="text-xl text-red-10">${bestDistance}m</span>`;
   }, 1000);
 
 }
@@ -405,14 +454,15 @@ const MENU_ITEMS = [
 const GAME_ITEMS = [
 
   // Basic Items (Coin and Rocks)
-  { name: "coin", type: "coin", weight: 3, anim: { anim: "idle" } },
+  { name: "coin", type: "coin", weight: 1, anim: { anim: "idle" } },
+  { name: "silver-coin", type: "silver-coin", weight: 3, anim: { anim: "idle" } },
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
 
   // Pickups
-  { name: "health-potion", type: "health-potion", weight: 0.1, scale: [1, 1.25] },
-  { name: "speed-potion", type: "speed-potion", weight: 0.2, scale: [1, 1.25] },
+  { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25] },
+  { name: "speed-potion", type: "speed-potion", weight: 0.3, scale: [1, 1.25] },
 
 ];
 
@@ -488,15 +538,15 @@ function changeCoins(num, coinPos) {
   // Spark and bounce if coinPos is provided
   if (coinPos) {
     collectedCoins += num;
-    sparkEffect(coinPos);
-    coinBounceEffect(coinPos);
+    sparkEffect(coinPos, true);
+    coinBounceEffect(coinPos, true);
   }
 
 }
 
-function sparkEffect(coinPos) {
+function sparkEffect(coinPos, isGold = false) {
   const spark = k.add([
-    k.sprite("spark"),
+    k.sprite(isGold ? "spark" : "silver-spark"),
     k.pos(coinPos),
     k.rotate(k.rand(0, 360)),
     k.scale(4),
@@ -519,9 +569,9 @@ function sparkEffect(coinPos) {
   });
 }
 
-function coinBounceEffect(coinPos) {
+function coinBounceEffect(coinPos, isGold = false) {
   const bounceCoin = k.add([
-    k.sprite("coin", { anim: "idle" }),
+    k.sprite(isGold ? "coin" : "silver-coin", { anim: "idle" }),
     k.pos(coinPos),
     k.scale(0.75),
     k.anchor("center"),
@@ -548,6 +598,36 @@ starr.onCollide("coin", (coin) => {
   // Destroy and add coin, play sfx
   coin.destroy();
   changeCoins(1, coin.pos);
+  k.play(k.choose(["coin1", "coin2"]), { volume: 0.5 });
+});
+
+// Silver Coins
+const silverCoinLabel = document.getElementById("silver-coin-label");
+let silverCoins = parseInt(localStorage.getItem(SILVER_COIN) || "0", 10);
+
+// Init silver coin label
+silverCoinLabel.innerText = silverCoins;
+
+function changeSilverCoins(num, coinPos) {
+  silverCoins += num;
+  localStorage.setItem(SILVER_COIN, silverCoins);
+  silverCoinLabel.innerText = silverCoins;
+  
+  // Spark and bounce if coinPos is provided
+  if (coinPos) {
+    collectedSilverCoins += num;
+    sparkEffect(coinPos, false);
+    coinBounceEffect(coinPos, false);
+  }
+  
+}
+
+starr.onCollide("silver-coin", (coin) => {
+  if (!isInGame) return;
+  
+  // Destroy and add coin, play sfx
+  coin.destroy();
+  changeSilverCoins(1, coin.pos);
   k.play(k.choose(["coin1", "coin2"]), { volume: 0.5 });
 });
 
@@ -853,7 +933,7 @@ function getShopItems() {
     itemIds = newItems.map(item => item.id);
 
     localStorage.setItem(SAVED_SHOP_DATE, today);
-    localStorage.setItem(SAVED_SHOP_ITEMS, JSON.stringify(newItems));
+    localStorage.setItem(SAVED_SHOP_ITEMS, JSON.stringify(itemIds));
   }
 
   // Return those ids' item objects
@@ -871,13 +951,13 @@ function renderShopItems() {
   todayItems.forEach((item) => {
     const itemElement = document.createElement("button");
     itemElement.id = item.id;
-    itemElement.className = "flex flex-col justify-center items-center gap-1 cursor-pointer";
+    itemElement.className = "flex flex-col justify-center items-center cursor-pointer";
     itemElement.innerHTML = `
       <!-- ADD ICON HERE -->
-      <span class="block text-xl">${item.name}</span>
+      <span class="block text-lg">${item.name}</span>
       <div class="flex justify-between items-center gap-2">
-        <img src="${item.currency}" class="w-5 h-5">
-        <span class="text-lg">${item.price}</span>
+        <img src="${item.currency}" class="w-4 h-4">
+        <span class="text-md">${item.price}</span>
       </div>
     `;
 
