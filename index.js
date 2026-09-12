@@ -451,18 +451,18 @@ const MENU_ITEMS = [
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] }
 ];
 
-const GAME_ITEMS = [
+let GAME_ITEMS = [
 
   // Basic Items (Coin and Rocks)
-  { name: "coin", type: "coin", weight: 1, anim: { anim: "idle" } },
-  { name: "silver-coin", type: "silver-coin", weight: 3, anim: { anim: "idle" } },
-  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
-  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
-  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
+  { name: "coin", type: "coin", weight: 1, anim: { anim: "idle" }, category: "positive" },
+  { name: "silver-coin", type: "silver-coin", weight: 3, anim: { anim: "idle" }, category: "positive" },
+  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90], category: "negative" },
+  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90], category: "negative" },
+  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90], category: "negative" },
 
   // Pickups
-  { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25] },
-  { name: "speed-potion", type: "speed-potion", weight: 0.3, scale: [1, 1.25] },
+  { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
+  { name: "speed-potion", type: "speed-potion", weight: 0.3, scale: [1, 1.25], category: "positive" },
 
 ];
 
@@ -482,7 +482,7 @@ function getRandomItem(config) {
 let itemTimer = 0;
 k.loop(0.1, () => {
   itemTimer += 0.1;
-  const baseInterval = isInGame ? 0.5 : 0.75;
+  const baseInterval = isInGame ? 0.35 : 0.75;
   const targetInterval = baseInterval / getDifficulty();
 
   if (itemTimer >= targetInterval) {
@@ -506,6 +506,7 @@ k.loop(0.1, () => {
       k.rotate(k.rand(0, 360)),
       k.anchor("center"),
       k.area(hitbox),
+      k.opacity(1),
       k.z(itemConfig.zIndex || 10),
       itemConfig.type,
       "item"
@@ -523,23 +524,24 @@ k.loop(0.1, () => {
   }
 });
 
-// Coins
-const coinLabel = document.getElementById("coin-label");
-let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
-
-// Init coin label
-coinLabel.innerText = coins;
-
-function changeCoins(num, coinPos) {
-  coins += num;
-  localStorage.setItem(COINS, coins);
-  coinLabel.innerText = coins;
+// Currencies
+function changeCoins(num, coinPos, isGold = false) {
+  if (isGold) {
+    coins += num;
+    localStorage.setItem(COINS, coins);
+    coinLabel.innerText = coins;
+    if (coinPos) collectedCoins += num;
+  } else {
+    silverCoins += num;
+    localStorage.setItem(SILVER_COIN, silverCoins);
+    silverCoinLabel.innerText = silverCoins;
+    if (coinPos) collectedSilverCoins += num;
+  }
   
   // Spark and bounce if coinPos is provided
   if (coinPos) {
-    collectedCoins += num;
-    sparkEffect(coinPos, true);
-    coinBounceEffect(coinPos, true);
+    sparkEffect(coinPos, isGold);
+    coinBounceEffect(coinPos, isGold);
   }
 
 }
@@ -592,12 +594,19 @@ function coinBounceEffect(coinPos, isGold = false) {
   });
 }
 
+// Coins
+const coinLabel = document.getElementById("coin-label");
+let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
+
+// Init coin label
+coinLabel.innerText = coins;
+
 starr.onCollide("coin", (coin) => {
   if (!isInGame) return;
 
   // Destroy and add coin, play sfx
   coin.destroy();
-  changeCoins(1, coin.pos);
+  changeCoins(1, coin.pos, true);
   k.play(k.choose(["coin1", "coin2"]), { volume: 0.5 });
 });
 
@@ -608,27 +617,13 @@ let silverCoins = parseInt(localStorage.getItem(SILVER_COIN) || "0", 10);
 // Init silver coin label
 silverCoinLabel.innerText = silverCoins;
 
-function changeSilverCoins(num, coinPos) {
-  silverCoins += num;
-  localStorage.setItem(SILVER_COIN, silverCoins);
-  silverCoinLabel.innerText = silverCoins;
-  
-  // Spark and bounce if coinPos is provided
-  if (coinPos) {
-    collectedSilverCoins += num;
-    sparkEffect(coinPos, false);
-    coinBounceEffect(coinPos, false);
-  }
-  
-}
-
 starr.onCollide("silver-coin", (coin) => {
   if (!isInGame) return;
   
   // Destroy and add coin, play sfx
   coin.destroy();
-  changeSilverCoins(1, coin.pos);
-  k.play(k.choose(["coin1", "coin2"]), { volume: 0.5 });
+  changeCoins(1, coin.pos, false);
+  k.play(k.choose(["coin1", "coin2"]), { volume: 0.4 });
 });
 
 // Rocks
@@ -666,7 +661,7 @@ function changeHealth(num, rockPos, isShield = false) {
       health = 0;
       gameOver();
       explode(rockPos, true);
-      k.play("explosion2", { volume: 1.2 });
+      k.play("explosion2", { volume: 1 });
     } else {
       explode(rockPos)
       k.play("explosion1", { volume: 0.8 });
@@ -699,19 +694,29 @@ function explode(rockPos, fatal = false) {
   
 }
 
+let canDodge = false;
 starr.onCollide("rock", (rock) => {
   if (isInvincible || !isInGame) return;
-  isInvincible = true;
 
-  // Destroy rock and reduce health
-  rock.destroy();
-  changeHealth(-25, rock.pos);
+  // Effect of shop item "dodge"
+  if (canDodge && k.chance(1)) {
+    rock.onUpdate(() => {
+      rock.opacity -= 3 * k.dt(); // Add more effects
+    });
+  } else {
+    isInvincible = true;
 
-  // Invincible for 2 second
-  setTimeout(() => {
-    isInvincible = false;
-    starr.opacity = 1;
-  }, 2000);
+    // Destroy rock and reduce health
+    rock.destroy();
+    changeHealth(-25, rock.pos);
+
+    // Invincible for 1.5 second
+    setTimeout(() => {
+      isInvincible = false;
+      starr.opacity = 1;
+    }, 1500);
+
+  }
 });
 
 // Health Potion
@@ -865,52 +870,54 @@ overlay.addEventListener("click", (e) => {
 // Shop Items
 // ------------------------------
 const SHOP_ITEMS = [
-  {
-    id: "item-shield-btn",
-    name: "Shield",
-    currency: "./assets/sprites/coin/frame1.png",
-    price: 50,
-    icon: "TODO",
-    onBuy: (shieldBtn) => {
-      if (coins >= 50) {
-        changeCoins(-50);
-        boughtItem(shieldBtn);
-        changeHealth(25, null, true);
-      } else {
-        boughtItem(shieldBtn, true);
+  { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "TODO",
+    onBuy: () => {
+      // Add a 25% health shield by providing the isShield flag 
+      changeHealth(25, null, true);
+    }
+  },
+  { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "TODO",
+    onBuy: () => {
+      // Increase positive items' weight and decrease negative items' weight
+      for (const item of GAME_ITEMS) {
+        if (item.category === "positive") {
+          item.weight *= 2;
+        } else if (item.category === "negative") {
+          item.weight /= 2;
+        }
       }
     }
   },
-  {
-    id: "item-lucky-btn",
-    name: "Lucky",
-    currency: "./assets/sprites/coin/frame1.png",
-    price: 50,
-    icon: "TODO",
-    onBuy: (luckyBtn) => {
-      if (coins >= 50) {
-        changeCoins(-50);
-        boughtItem(luckyBtn);
-        // ADD EFFECTS
-      } else {
-        boughtItem(luckyBtn, true);
-      }
+  { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "TODO",
+    onBuy: () => {
+      // Set starting speed to 5
+      speed = 5;
     }
   },
-  {
-    id: "item-speedy-btn",
-    name: "Speedy",
-    currency: "./assets/sprites/coin/frame1.png",
-    price: 50,
-    icon: "TODO",
-    onBuy: (speedyBtn) => {
-      if (coins >= 50) {
-        changeCoins(-50);
-        boughtItem(speedyBtn);
-        // ADD EFFECTS
-      } else {
-        boughtItem(speedyBtn, true);
-      }
+  { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "TODO",
+    onBuy: () => {
+      // 50% chance of dodging the rock on hit
+      canDodge = true;
+    }
+  },
+  { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "TODO",
+    onBuy: () => {
+      // Make Starr attract coins
+    }
+  },
+  { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "TODO",
+    onBuy: () => {
+      // Destroy all the rocks on the screen and converting them to coins on death
+    }
+  },
+  { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "TODO",
+    onBuy: () => {
+
+    }
+  },
+  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "TODO",
+    onBuy: () => {
+      // Add a stasis field around Starr which makes all incoming items slow down
     }
   }
 ];
@@ -956,14 +963,25 @@ function renderShopItems() {
       <!-- ADD ICON HERE -->
       <span class="block text-lg">${item.name}</span>
       <div class="flex justify-between items-center gap-2">
-        <img src="${item.currency}" class="w-4 h-4">
+        <img src="./assets/sprites/${item.currency}/frame1.png" class="w-4 h-4">
         <span class="text-md">${item.price}</span>
       </div>
     `;
 
     // Add item to DOM and click event listener
     shopItemsContainer.appendChild(itemElement);
-    itemElement.addEventListener("click", () => item.onBuy(itemElement));
+    itemElement.addEventListener("click", () => {
+      const isGold = item.currency === "coins";
+      const currentBalance = isGold ? coins : silverCoins;
+
+      if (currentBalance >= item.price) {
+        changeCoins(-item.price, null, isGold);
+        boughtItem(itemElement);
+        item.onBuy();
+      } else {
+        boughtItem(itemElement, true);
+      }
+    });
   });
 
 }
