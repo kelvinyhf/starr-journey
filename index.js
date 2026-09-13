@@ -21,6 +21,7 @@ let doubleCoins = false;
 let isInGame = false;
 let isInvincible = false;
 let died = false;
+let isStasis = false;
 
 // ------------------------------
 // Load sprites
@@ -283,9 +284,18 @@ function gameOver() {
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
     collectedCoinsLabel.innerHTML = `
-      Collected <img src="./assets/sprites/coin/frame1.png" class="inline w-5 h-5"> <span class="text-xl">${collectedCoins}</span>
-      and <img src="./assets/sprites/silver-coin/frame1.png" class="inline w-5 h-5"> <span class="text-xl">${collectedSilverCoins}</span>
-      ${doubleCoins ? "<span class='text-lg'>(doubled!)</span>" : ""}`;
+      Collected
+      <span class="inline-flex items-center gap-2">
+        <img src="./assets/sprites/coin/frame1.png" class="w-5 h-5">
+        <span class="text-xl">${collectedCoins}</span>
+      </span>
+      and
+      <span class="inline-flex items-center gap-2">
+        <img src="./assets/sprites/silver-coin/frame1.png" class="w-5 h-5">
+        <span class="text-xl">${collectedSilverCoins}</span>
+      </span>
+      ${doubleCoins ? "<span class='text-lg'>(Doubled!)</span>" : ""}
+    `;
     bestDistanceLabel.innerHTML = `Best Distance <span class="text-xl text-red-10">${bestDistance}m</span>`;
   }, 1000);
 
@@ -529,7 +539,10 @@ k.loop(0.1, () => {
 
     // Drop and spin
     item.onUpdate(() => {
-      item.pos.y += randomSpeed * k.dt();
+      
+      // Effect of the shop item "stasis"
+      item.pos.y += randomSpeed * k.dt() * (itemConfig.type === "rock" && isStasis && item.pos.dist(starr.pos) <= 175 ? 0.85 : 1);
+      
       item.angle += spinSpeed * k.dt();
       if (item.pos.y > k.height() + 500) item.destroy();
     });
@@ -721,7 +734,7 @@ let canDodge = false;
 starr.onCollide("rock", (rock) => {
   if (isInvincible || !isInGame) return;
 
-  // Effect of shop item "dodge"
+  // Effect of the shop item "dodge"
   if (canDodge && k.chance(1)) {
     rock.onUpdate(() => {
       rock.opacity -= 3 * k.dt(); // Add more effects
@@ -894,11 +907,13 @@ overlay.addEventListener("click", (e) => {
 // ------------------------------
 const SHOP_ITEMS = [
   { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "shield.png",
+    info: "Give Starr a 25 HP shield on start",
     onBuy: () => {
       changeHealth(25, null, true);
     }
   },
   { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "lucky.png",
+    info: "Spawns more good items and fewer bad ones",
     onBuy: () => {
       for (const item of GAME_ITEMS) {
         if (item.category === "positive") {
@@ -910,16 +925,19 @@ const SHOP_ITEMS = [
     }
   },
   { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "speedy.png",
+    info: "Boosts your speed five times on start",
     onBuy: () => {
       speed = 5;
     }
   },
   { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "dodge.png",
+    info: "50% of dodging obstacle when hit",
     onBuy: () => {
       canDodge = true;
     }
   },
   { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "magnet.png",
+    info: "Pulls nearby coins to your position automatically",
     onBuy: () => {
       const MAGNET_RADIUS = 150;
       const MAGNET_SPEED = 300;
@@ -939,21 +957,24 @@ const SHOP_ITEMS = [
       });
     }
   },
-  { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "kaboom.png",
-    onBuy: () => {
-      // Destroy all the rocks on the screen and converting them to coins on death
-    }
-  },
   { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "double.png",
+    info: "Double all coins collected by two",
     onBuy: () => {
       doubleCoins = true;
     }
   },
-  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "statis.png",
+  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "stasis.png",
+    info: "Makes nearby obstacles move slower",
     onBuy: () => {
-      // Add a stasis field around Starr which makes all incoming items slow down
+      isStasis = true;
     }
-  }
+  },
+  /* { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "kaboom.png",
+    info: "Ka, then Boom! Guess what?",
+    onBuy: () => {
+      
+    }
+  }, */
 ];
 
 const SAVED_SHOP_WINDOW = "starr_shop_window";
@@ -989,6 +1010,7 @@ function getShopItems() {
 
 function renderShopItems() {
   const shopItemsContainer = document.getElementById("shop-items");
+  const shopItemInfoLabel = document.getElementById("shop-item-info");
   const todayItems = getShopItems();
   
   // Clear old items
@@ -1000,11 +1022,11 @@ function renderShopItems() {
     itemElement.id = item.id;
     itemElement.className = "flex flex-col justify-center items-center cursor-pointer";
     itemElement.innerHTML = `
-      <img src="./assets/sprites/statics/${item.icon}" class="-mb-2 w-10 h-10">
+      <img src="./assets/sprites/statics/${item.icon}" class="w-12 h-12">
       <span class="block text-lg [-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]">${item.name}</span>
       <div class="flex justify-between items-center gap-2">
         <img src="./assets/sprites/${item.currency}/frame1.png" class="w-4 h-4">
-        <span class="text-md">${item.price}</span>
+        <span class="text-md [-webkit-text-stroke:3px_#222] [paint-order:stroke_fill]">${item.price}</span>
       </div>
     `;
 
@@ -1022,6 +1044,12 @@ function renderShopItems() {
         boughtItem(itemElement, true);
       }
     });
+    
+    // Show item info when hovered
+    itemElement.addEventListener("pointerenter", () => {
+      shopItemInfoLabel.innerText = item.info;
+    });
+    
   });
 
 }

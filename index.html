@@ -145,10 +145,16 @@
     <div id="overlay" class="hidden absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.5)] z-98"></div>
 
     <!-- Shop UI -->
-    <div id="shop-ui" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[rgba(0,0,0,0.85)] pixel-frame p-8 pt-0 text-center flex flex-col items-center gap-4 z-99">
-      <span class="block text-2xl pixel-frame -mt-4 p-1">Today's Shop</span>
-      <div id="shop-items" class="flex justify-center items-center gap-6 pt-4"></div>
-      <span id="shop-timer" class="text-lg [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">Refresh in 10:00</span>
+    <div id="shop-ui" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[rgba(0,0,0,0.85)] pixel-frame px-6 pt-0 pb-4 text-center flex flex-col items-center gap-4 z-99">
+      <div class="block flex items-center gap-3 text-2xl pixel-frame -mt-4 p-2">
+        <span>The Shop</span>
+        <img src="./assets/sprites/statics/flag.png" class="w-8 h-8">
+      </div>
+      
+      <!-- Shop items, info, and refresh timer -->
+      <div id="shop-items" class="flex justify-center items-center gap-6 mt-4 p-3 bg-[rgba(255,255,255,0.25)]"></div> <!-- ADD PIXELATED CORNERS -->
+      <span id="shop-item-info" class="text-md text-gray-6 [-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]">(Hover to see info)<br>&nbsp;</span>
+      <span id="shop-timer" class="text-xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">Refresh in 00:00</span>
     </div>
 
   </div>
