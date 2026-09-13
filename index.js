@@ -872,13 +872,11 @@ overlay.addEventListener("click", (e) => {
 const SHOP_ITEMS = [
   { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "TODO",
     onBuy: () => {
-      // Add a 25% health shield by providing the isShield flag 
       changeHealth(25, null, true);
     }
   },
   { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "TODO",
     onBuy: () => {
-      // Increase positive items' weight and decrease negative items' weight
       for (const item of GAME_ITEMS) {
         if (item.category === "positive") {
           item.weight *= 2;
@@ -890,36 +888,49 @@ const SHOP_ITEMS = [
   },
   { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "TODO",
     onBuy: () => {
-      // Set starting speed to 5
       speed = 5;
     }
   },
   { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "TODO",
     onBuy: () => {
-      // 50% chance of dodging the rock on hit
       canDodge = true;
     }
   },
   { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "TODO",
     onBuy: () => {
-      // Make Starr attract coins
+      const MAGNET_RADIUS = 150;
+      const MAGNET_SPEED = 300;
+      
+      k.onUpdate(() => {
+        if (!isInGame) return;
+        const coins = k.get("coin").concat(k.get("silver-coin"));
+        
+        for (const coin of coins) {
+          const dist = coin.pos.dist(starr.pos);
+          if (dist <= MAGNET_RADIUS) {
+            const dir = starr.pos.sub(coin.pos).unit();
+            coin.pos = coin.pos.add(dir.scale(MAGNET_SPEED * k.dt()));
+          }
+        }
+        
+      });
     }
   },
-  { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "TODO",
+  /* { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "TODO",
     onBuy: () => {
       // Destroy all the rocks on the screen and converting them to coins on death
     }
   },
   { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "TODO",
     onBuy: () => {
-
+      // Double all coins
     }
   },
   { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "TODO",
     onBuy: () => {
       // Add a stasis field around Starr which makes all incoming items slow down
     }
-  }
+  } */
 ];
 
 const SAVED_SHOP_DATE = "starr_shop_date";
