@@ -99,7 +99,7 @@
   <!-- Menu UI -->
   <div id="menu-ui" class="pt-[env(safe-area-inset-top)] absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.3)] flex flex-col justify-between items-center">
 
-    <!-- Info -->
+    <!-- Home Screen -->
     <div class="flex-1 flex flex-col justify-center items-center gap-6 w-full px-6">
       
       <!-- Logo -->
@@ -110,21 +110,22 @@
       </div>
       
       <span class="block text-xl text-center">Click anywhere to start</span>
-    </div>
 
-    <!-- Buttons -->
-    <div class="flex justify-center items-center w-full px-10 py-8">
-      
-      <!-- Shop -->
-      <button id="shop-btn" class="flex flex-col justify-between gap-3 items-center cursor-pointer">
-        <!-- ADD ICON -->
-        <span class="text-xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">Shop</span>
-      </button>
-      
+      <!-- Buttons -->
+      <div class="flex justify-center items-center w-full p-12">
+
+        <!-- Shop -->
+        <button id="shop-btn" class="flex flex-col  items-center cursor-pointer">
+          <img src="./assets/sprites/statics/shop.png" class="-mb-4 w-14 h-14">
+          <span class="text-2xl [-webkit-text-stroke:6px_#111] [paint-order:stroke_fill]">Shop</span>
+        </button>
+        
+      </div>
+
     </div>
 
     <!-- Bottom Bar -->
-    <div class="flex justify-evenly items-center w-full px-10 py-8">
+    <div class="flex justify-evenly items-center w-full max-w-xl px-10 py-8">
       
       <!-- Silver Coin Label -->
       <div class="flex justify-between gap-3 items-center">
@@ -144,9 +145,10 @@
     <div id="overlay" class="hidden absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.5)] z-98"></div>
 
     <!-- Shop UI -->
-    <div id="shop-ui" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[rgba(0,0,0,0.85)] pixel-frame p-8 text-center flex flex-col justify-center items-center gap-4 z-99">
-      <span class="block text-2xl">Today's Shop</span>
-      <div id="shop-items" class="flex justify-center items-center gap-6"></div>
+    <div id="shop-ui" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[rgba(0,0,0,0.85)] pixel-frame p-8 pt-0 text-center flex flex-col items-center gap-4 z-99">
+      <span class="block text-2xl pixel-frame -mt-4 p-1">Today's Shop</span>
+      <div id="shop-items" class="flex justify-center items-center gap-6 pt-4"></div>
+      <span id="shop-timer" class="text-lg [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">Refresh in 10:00</span>
     </div>
 
   </div>

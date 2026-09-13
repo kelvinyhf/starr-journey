@@ -17,6 +17,7 @@ let meters = 0;
 let speed = 1;
 let collectedCoins = 0;
 let collectedSilverCoins = 0;
+let doubleCoins = false;
 let isInGame = false;
 let isInvincible = false;
 let died = false;
@@ -267,12 +268,24 @@ function gameOver() {
     localStorage.setItem(METERS, meters.toFixed(1));
   }
 
+  // Set coins
+  collectedCoins *= (doubleCoins ? 2 : 1);
+  coins += collectedCoins;
+  localStorage.setItem(COINS, coins);
+  coinLabel.innerText = coins;
+
+  collectedSilverCoins *= (doubleCoins ? 2 : 1);
+  silverCoins += collectedSilverCoins;
+  localStorage.setItem(SILVER_COIN, silverCoins);
+  silverCoinLabel.innerText = silverCoins;
+
   setTimeout(() => {
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
     collectedCoinsLabel.innerHTML = `
       Collected <img src="./assets/sprites/coin/frame1.png" class="inline w-5 h-5"> <span class="text-xl">${collectedCoins}</span>
-      and <img src="./assets/sprites/silver-coin/frame1.png" class="inline w-5 h-5"> <span class="text-xl">${collectedSilverCoins}</span>`;
+      and <img src="./assets/sprites/silver-coin/frame1.png" class="inline w-5 h-5"> <span class="text-xl">${collectedSilverCoins}</span>
+      ${doubleCoins ? "<span class='text-lg'>(doubled!)</span>" : ""}`;
     bestDistanceLabel.innerHTML = `Best Distance <span class="text-xl text-red-10">${bestDistance}m</span>`;
   }, 1000);
 
@@ -526,17 +539,27 @@ k.loop(0.1, () => {
 
 // Currencies
 function changeCoins(num, coinPos, isGold = false) {
-  if (isGold) {
-    coins += num;
-    localStorage.setItem(COINS, coins);
-    coinLabel.innerText = coins;
-    if (coinPos) collectedCoins += num;
+  if (isInGame) {
+    if (isGold) {
+      collectedCoins += num;
+    } else {
+      collectedSilverCoins += num;
+    }
   } else {
-    silverCoins += num;
-    localStorage.setItem(SILVER_COIN, silverCoins);
-    silverCoinLabel.innerText = silverCoins;
-    if (coinPos) collectedSilverCoins += num;
+
+    // Directly change coins if not in game (but in shop)
+    if (isGold) {
+      coins += num;
+      localStorage.setItem(COINS, coins);
+      coinLabel.innerText = coins;
+    } else {
+      silverCoins += num;
+      localStorage.setItem(SILVER_COIN, silverCoins);
+      silverCoinLabel.innerText = silverCoins;
+    }
+
   }
+  
   
   // Spark and bounce if coinPos is provided
   if (coinPos) {
@@ -870,12 +893,12 @@ overlay.addEventListener("click", (e) => {
 // Shop Items
 // ------------------------------
 const SHOP_ITEMS = [
-  { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "TODO",
+  { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "shield.png",
     onBuy: () => {
       changeHealth(25, null, true);
     }
   },
-  { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "TODO",
+  { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "lucky.png",
     onBuy: () => {
       for (const item of GAME_ITEMS) {
         if (item.category === "positive") {
@@ -886,17 +909,17 @@ const SHOP_ITEMS = [
       }
     }
   },
-  { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "TODO",
+  { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "speedy.png",
     onBuy: () => {
       speed = 5;
     }
   },
-  { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "TODO",
+  { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "dodge.png",
     onBuy: () => {
       canDodge = true;
     }
   },
-  { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "TODO",
+  { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "magnet.png",
     onBuy: () => {
       const MAGNET_RADIUS = 150;
       const MAGNET_SPEED = 300;
@@ -916,33 +939,39 @@ const SHOP_ITEMS = [
       });
     }
   },
-  /* { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "TODO",
+  { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "kaboom.png",
     onBuy: () => {
       // Destroy all the rocks on the screen and converting them to coins on death
     }
   },
-  { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "TODO",
+  { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "double.png",
     onBuy: () => {
-      // Double all coins
+      doubleCoins = true;
     }
   },
-  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "TODO",
+  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "statis.png",
     onBuy: () => {
       // Add a stasis field around Starr which makes all incoming items slow down
     }
-  } */
+  }
 ];
 
-const SAVED_SHOP_DATE = "starr_shop_date";
+const SAVED_SHOP_WINDOW = "starr_shop_window";
 const SAVED_SHOP_ITEMS = "starr_shop_items";
+const REFRESH_INTERVAL = 10000;
+
+function getCurrentShopWindow() {
+  return Math.floor(Date.now() / REFRESH_INTERVAL).toString();
+}
+
 function getShopItems() {
-  const today = new Date().toISOString().split("T")[0];
-  const savedDate = localStorage.getItem(SAVED_SHOP_DATE);
+  const currentWindow = getCurrentShopWindow();
+  const savedWindow = localStorage.getItem(SAVED_SHOP_WINDOW);
   const savedItemIds = localStorage.getItem(SAVED_SHOP_ITEMS);
   let itemIds = [];
 
   // If saved date is today return the saved items
-  if (savedDate === today && savedItemIds) {
+  if (savedWindow === currentWindow && savedItemIds) {
     itemIds = JSON.parse(savedItemIds);
   } else {
 
@@ -950,7 +979,7 @@ function getShopItems() {
     const newItems = k.chooseMultiple(SHOP_ITEMS, 3);
     itemIds = newItems.map(item => item.id);
 
-    localStorage.setItem(SAVED_SHOP_DATE, today);
+    localStorage.setItem(SAVED_SHOP_WINDOW, currentWindow);
     localStorage.setItem(SAVED_SHOP_ITEMS, JSON.stringify(itemIds));
   }
 
@@ -971,8 +1000,8 @@ function renderShopItems() {
     itemElement.id = item.id;
     itemElement.className = "flex flex-col justify-center items-center cursor-pointer";
     itemElement.innerHTML = `
-      <!-- ADD ICON HERE -->
-      <span class="block text-lg">${item.name}</span>
+      <img src="./assets/sprites/statics/${item.icon}" class="-mb-2 w-10 h-10">
+      <span class="block text-lg [-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]">${item.name}</span>
       <div class="flex justify-between items-center gap-2">
         <img src="./assets/sprites/${item.currency}/frame1.png" class="w-4 h-4">
         <span class="text-md">${item.price}</span>
@@ -982,7 +1011,7 @@ function renderShopItems() {
     // Add item to DOM and click event listener
     shopItemsContainer.appendChild(itemElement);
     itemElement.addEventListener("click", () => {
-      const isGold = item.currency === "coins";
+      const isGold = item.currency === "coin";
       const currentBalance = isGold ? coins : silverCoins;
 
       if (currentBalance >= item.price) {
@@ -997,6 +1026,29 @@ function renderShopItems() {
 
 }
 
+// Shop Timer
+const shopTimerLabel = document.getElementById("shop-timer");
+let timerInterval = null;
+
+function updateShopTimer() {
+  const now = Date.now();
+  const timeRemaining = REFRESH_INTERVAL - (now % REFRESH_INTERVAL);
+
+  // Render shop timer
+  const totalSeconds = Math.floor(timeRemaining / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  shopTimerLabel.innerText = `Refresh in ${formattedTime}`;
+
+  // Stop timer if refreshed
+  if (totalSeconds === 0) clearInterval(timerInterval);
+}
+
+// Set and init timer
+timerInterval = setInterval(updateShopTimer, 1000);
+updateShopTimer();
+
 // ------------------------------
 // Shop
 // ------------------------------
@@ -1004,7 +1056,6 @@ const shopBtn = document.getElementById("shop-btn");
 const shopUI = document.getElementById("shop-ui");
 shopBtn.addEventListener("click", (e) => {
   e.stopPropagation();
-  renderShopItems();
   shopUI.classList.remove("hidden");
   overlay.classList.remove("hidden");
 });
@@ -1023,3 +1074,6 @@ function boughtItem(btn, failed = false) {
     // PLAY SFX
   }
 }
+
+// Init shop once
+renderShopItems();
