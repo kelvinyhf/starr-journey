@@ -1,5 +1,5 @@
 // ------------------------------
-// Init, Settings, and States
+// KAPLAY Initialization
 // ------------------------------
 import kaplay from "./assets/libraries/kaplay.mjs";
 const k = kaplay({
@@ -8,20 +8,35 @@ const k = kaplay({
   fullscreen: true,
   global: false
 });
+
+// Data storage
 const METERS = "starr_meters";
 const COINS = "starr_coins";
 const SILVER_COIN = "starr_silver_coins";
+let bestDistance = parseFloat(localStorage.getItem(METERS) || "0", 10);
+let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
+let silverCoins = parseInt(localStorage.getItem(SILVER_COIN) || "0", 10);
+
+// Game const
 const minX = (k.width() / 2) - 240;
 const maxX = (k.width() / 2) + 240;
+
+// Game vars and flags
+let isInGame = false;
+let isInvincible = false;
+let invincibleOnStart = false;
+let controlling = false;
+let died = false;
+let health = 100;
 let meters = 0;
 let speed = 1;
 let collectedCoins = 0;
 let collectedSilverCoins = 0;
-let doubleCoins = false;
-let isInGame = false;
-let isInvincible = false;
-let died = false;
+
+// Effects
 let isStasis = false;
+let canDodge = false;
+let doubleCoins = false;
 
 // ------------------------------
 // Load sprites
@@ -329,8 +344,6 @@ const starr = k.add([
 ]);
 starr.shader = null;
 
-let controlling = false;
-let invincibleOnStart = false;
 let trailTimer = 0;
 starr.onUpdate(() => {
 
@@ -632,7 +645,6 @@ function coinBounceEffect(coinPos, isGold = false) {
 
 // Coins
 const coinLabel = document.getElementById("coin-label");
-let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
 
 // Init coin label
 coinLabel.innerText = coins;
@@ -648,7 +660,6 @@ starr.onCollide("coin", (coin) => {
 
 // Silver Coins
 const silverCoinLabel = document.getElementById("silver-coin-label");
-let silverCoins = parseInt(localStorage.getItem(SILVER_COIN) || "0", 10);
 
 // Init silver coin label
 silverCoinLabel.innerText = silverCoins;
@@ -664,7 +675,6 @@ starr.onCollide("silver-coin", (coin) => {
 
 // Rocks
 const healthBar = document.getElementById("health-bar");
-let health = 100;
 function changeHealth(num, rockPos, isShield = false) {
   health += num;
   if (health > 100) {
@@ -730,7 +740,6 @@ function explode(rockPos, fatal = false) {
   
 }
 
-let canDodge = false;
 starr.onCollide("rock", (rock) => {
   if (isInvincible || !isInGame) return;
 
@@ -876,7 +885,6 @@ starr.onCollide("speed-potion", (potion) => {
 // ------------------------------
 const meterCounter = document.getElementById("meter-counter");
 const bestDistanceLabel = document.getElementById("best-distance");
-let bestDistance = parseFloat(localStorage.getItem(METERS) || "0", 10);
 
 function truncTo(num, decimals) {
   const factor = Math.pow(10, decimals);
@@ -906,13 +914,19 @@ overlay.addEventListener("click", (e) => {
 // Shop Items
 // ------------------------------
 const SHOP_ITEMS = [
-  { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "shield.png",
+  { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "speedy.png", // 75
+    info: "Boosts your speed five times on start",
+    onBuy: () => {
+      speed = 5;
+    }
+  },
+  { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "shield.png", // 75
     info: "Give Starr a 25 HP shield on start",
     onBuy: () => {
       changeHealth(25, null, true);
     }
   },
-  { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "lucky.png",
+  { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "lucky.png", // 100
     info: "Spawns more good items and fewer bad ones",
     onBuy: () => {
       for (const item of GAME_ITEMS) {
@@ -924,23 +938,23 @@ const SHOP_ITEMS = [
       }
     }
   },
-  { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "speedy.png",
-    info: "Boosts your speed five times on start",
+  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "stasis.png", // 125
+    info: "Makes nearby obstacles move slower",
     onBuy: () => {
-      speed = 5;
+      isStasis = true;
     }
   },
-  { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "dodge.png",
+  { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "dodge.png", // 20 Gold
     info: "50% of dodging obstacle when hit",
     onBuy: () => {
       canDodge = true;
     }
   },
-  { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "magnet.png",
+  { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "magnet.png", // 25 Gold
     info: "Pulls nearby coins to your position automatically",
     onBuy: () => {
-      const MAGNET_RADIUS = 150;
-      const MAGNET_SPEED = 300;
+      const MAGNET_RADIUS = 175;
+      const MAGNET_SPEED = 400;
       
       k.onUpdate(() => {
         if (!isInGame) return;
@@ -957,20 +971,14 @@ const SHOP_ITEMS = [
       });
     }
   },
-  { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "double.png",
+  { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "double.png", // 35 Gold
     info: "Double all coins collected by two",
     onBuy: () => {
       doubleCoins = true;
     }
   },
-  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "stasis.png",
-    info: "Makes nearby obstacles move slower",
-    onBuy: () => {
-      isStasis = true;
-    }
-  },
-  /* { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "kaboom.png",
-    info: "Ka, then Boom! Guess what?",
+  /* { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "kaboom.png", // 50 Gold
+    info: "Ka? Then Boom!",
     onBuy: () => {
       
     }
