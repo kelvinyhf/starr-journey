@@ -284,7 +284,7 @@ function gameOver() {
     localStorage.setItem(METERS, meters.toFixed(1));
   }
 
-  // Set coins
+  // Set coins + Effect of the shop item "double"
   collectedCoins *= (doubleCoins ? 2 : 1);
   coins += collectedCoins;
   localStorage.setItem(COINS, coins);
@@ -655,7 +655,7 @@ starr.onCollide("coin", (coin) => {
   // Destroy and add coin, play sfx
   coin.destroy();
   changeCoins(1, coin.pos, true);
-  k.play(k.choose(["coin1", "coin2"]), { volume: 0.5 });
+  k.play("coin2", { volume: 0.5 });
 });
 
 // Silver Coins
@@ -670,7 +670,7 @@ starr.onCollide("silver-coin", (coin) => {
   // Destroy and add coin, play sfx
   coin.destroy();
   changeCoins(1, coin.pos, false);
-  k.play(k.choose(["coin1", "coin2"]), { volume: 0.4 });
+  k.play("coin1", { volume: 0.5 });
 });
 
 // Rocks
@@ -1046,10 +1046,10 @@ function renderShopItems() {
 
       if (currentBalance >= item.price) {
         changeCoins(-item.price, null, isGold);
-        boughtItem(itemElement);
+        boughtItem(itemElement, item.currency, false);
         item.onBuy();
       } else {
-        boughtItem(itemElement, true);
+        boughtItem(itemElement, item.currency, true);
       }
     });
     
@@ -1100,14 +1100,14 @@ shopUI.addEventListener("click", (e) => {
   e.stopPropagation();
 });
 
-function boughtItem(btn, failed = false) {
+function boughtItem(btn, currency, failed = false) {
   if (!failed) {
     btn.classList.add("pointer-events-none", "cursor-default", "opacity-50");
-    // PLAY SFX
-    // ADD TICK
+    k.play(currency === "silver-coin" ? "coin1" : "coin2", { volume: 0.5 });
+    // ADD COIN BOUNCE UP EFFECT
   } else {
-    // TURN RED AND FADE BACK
-    // PLAY SFX
+    // SHAKE
+    // PLAY FAILED SFX
   }
 }
 
