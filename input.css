@@ -305,6 +305,33 @@
   border-radius: 12px;
 }
 
+@utility pixel-border {
+  clip-path: polygon(
+    4px 0, calc(100% - 4px) 0,
+    calc(100% - 4px) 4px, 100% 4px,
+    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+    calc(100% - 4px) 100%,
+    4px 100%, 4px calc(100% - 4px),
+    0 calc(100% - 4px),
+    0 4px, 4px 4px
+  );
+}
+
+@utility pixel-corner {
+  background-image:
+    url('./assets/images/pixel-corner/top-left.png'),
+    url('./assets/images/pixel-corner/top-right.png'),
+    url('./assets/images/pixel-corner/bottom-left.png'),
+    url('./assets/images/pixel-corner/bottom-right.png');
+  background-position:
+    top left,
+    top right,
+    bottom left,
+    bottom right;
+  background-repeat: no-repeat;
+  background-size: 6px 6px;
+}
+
 /* PWA Support */
 body {
   width: 100dvw;

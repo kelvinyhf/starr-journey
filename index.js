@@ -9,6 +9,9 @@ const k = kaplay({
   global: false
 });
 
+// States
+const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
 // Data storage
 const METERS = "starr_meters";
 const COINS = "starr_coins";
@@ -234,6 +237,7 @@ k.loadSound("explosion2", "./assets/sounds/explosion2.wav");
 k.loadSound("buff1", "./assets/sounds/buff1.wav");
 k.loadSound("buff2", "./assets/sounds/buff2.wav");
 k.loadSound("buff3", "./assets/sounds/buff3.wav");
+k.loadSound("failed", "./assets/sounds/failed.wav")
 k.loadSound("gameover", "./assets/sounds/gameover.wav");
 k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
 k.loadSound("Pixelland", "./assets/sounds/Pixelland.mp3");
@@ -277,6 +281,10 @@ function enterGame() {
 function gameOver() {
   starr.destroy();
   died = true;
+
+  // Disable effects
+  isStasis = false;
+  canDodge = false;
 
   // Set best distance
   if (meters > bestDistance) {
@@ -917,6 +925,7 @@ const SHOP_ITEMS = [
   { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "speedy.png", // 75
     info: "Boosts your speed five times on start",
     onBuy: () => {
+      addBuffIcon("speedy");
       speed = 5;
     }
   },
@@ -929,6 +938,7 @@ const SHOP_ITEMS = [
   { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "lucky.png", // 100
     info: "Spawns more good items and fewer bad ones",
     onBuy: () => {
+      addBuffIcon("lucky");
       for (const item of GAME_ITEMS) {
         if (item.category === "positive") {
           item.weight *= 2;
@@ -941,30 +951,30 @@ const SHOP_ITEMS = [
   { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "stasis.png", // 125
     info: "Makes nearby obstacles move slower",
     onBuy: () => {
+      addBuffIcon("stasis");
       isStasis = true;
     }
   },
   { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "dodge.png", // 20 Gold
-    info: "50% of dodging obstacle when hit",
+    info: "35% of dodging obstacle when hit",
     onBuy: () => {
+      addBuffIcon("dodge");
       canDodge = true;
     }
   },
   { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "magnet.png", // 25 Gold
     info: "Pulls nearby coins to your position automatically",
     onBuy: () => {
-      const MAGNET_RADIUS = 175;
-      const MAGNET_SPEED = 400;
-      
+      addBuffIcon("magnet");
       k.onUpdate(() => {
-        if (!isInGame) return;
+        if (!isInGame || died) return;
         const coins = k.get("coin").concat(k.get("silver-coin"));
         
         for (const coin of coins) {
           const dist = coin.pos.dist(starr.pos);
-          if (dist <= MAGNET_RADIUS) {
+          if (dist <= 175) {
             const dir = starr.pos.sub(coin.pos).unit();
-            coin.pos = coin.pos.add(dir.scale(MAGNET_SPEED * k.dt()));
+            coin.pos = coin.pos.add(dir.scale(400 * k.dt()));
           }
         }
         
@@ -974,6 +984,7 @@ const SHOP_ITEMS = [
   { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "double.png", // 35 Gold
     info: "Double all coins collected by two",
     onBuy: () => {
+      addBuffIcon("double");
       doubleCoins = true;
     }
   },
@@ -1016,9 +1027,11 @@ function getShopItems() {
   return itemIds.map(id => SHOP_ITEMS.find(item => item.id === id));
 }
 
+const shopItemsContainer = document.getElementById("shop-items");
+const shopItemInfoLabel = document.getElementById("shop-item-info");
+let focusingItem = null;
+
 function renderShopItems() {
-  const shopItemsContainer = document.getElementById("shop-items");
-  const shopItemInfoLabel = document.getElementById("shop-item-info");
   const todayItems = getShopItems();
   
   // Clear old items
@@ -1041,6 +1054,23 @@ function renderShopItems() {
     // Add item to DOM and click event listener
     shopItemsContainer.appendChild(itemElement);
     itemElement.addEventListener("click", () => {
+
+      // If it's touch device and not focusing the item
+      if (isTouchDevice && focusingItem !== item.id) {
+        
+        // Set focus state and show info
+        focusingItem = item.id;
+        shopItemInfoLabel.innerHTML = item.info;
+
+        // Remove pixel corner on other items and add to this item
+        for (const itemEl of shopItemsContainer.children) itemEl.classList.remove("pixel-corner");
+        itemElement.classList.add("pixel-corner");
+
+        return;
+      } else if (isTouchDevice && focusingItem === item.id) {
+        itemElement.classList.remove("pixel-corner");
+      }
+
       const isGold = item.currency === "coin";
       const currentBalance = isGold ? coins : silverCoins;
 
@@ -1051,15 +1081,25 @@ function renderShopItems() {
       } else {
         boughtItem(itemElement, item.currency, true);
       }
+
     });
     
-    // Show item info when hovered
-    itemElement.addEventListener("pointerenter", () => {
-      shopItemInfoLabel.innerText = item.info;
+    // Show item info when mouse hovered, hide when leave
+    itemElement.addEventListener("pointerenter", (e) => {
+      if (e.pointerType === "mouse") {
+        shopItemInfoLabel.innerHTML = item.info;
+      }
     });
-    
+
   });
 
+}
+
+// ShopItemInfoLabel inner text init
+if (isTouchDevice) {
+  shopItemInfoLabel.innerHTML = "(Click to see info)<br>&nbsp;";
+} else {
+  shopItemInfoLabel.innerHTML = "(Hover to see info)<br>&nbsp;";
 }
 
 // Shop Timer
@@ -1102,13 +1142,39 @@ shopUI.addEventListener("click", (e) => {
 
 function boughtItem(btn, currency, failed = false) {
   if (!failed) {
+    
+    // Mark as bought, play sfx and coin bounce up effect
     btn.classList.add("pointer-events-none", "cursor-default", "opacity-50");
     k.play(currency === "silver-coin" ? "coin1" : "coin2", { volume: 0.5 });
-    // ADD COIN BOUNCE UP EFFECT
+    // ADD EFFECT
+
   } else {
-    // SHAKE
-    // PLAY FAILED SFX
+    k.play("failed", { volume: 0.75 });
+    btn.animate(
+      [
+        { transform: 'translateX(0)', opacity: 0.5, offset: 0 },
+        { transform: 'translateX(-8px)', opacity: 0.5, offset: 0.1 },
+        { transform: 'translateX(6px)', opacity: 0.6, offset: 0.25 },
+        { transform: 'translateX(-4px)', opacity: 0.7, offset: 0.4 },
+        { transform: 'translateX(3px)', opacity: 0.8, offset: 0.55 },
+        { transform: 'translateX(-2px)', opacity: 0.9, offset: 0.7 },
+        { transform: 'translateX(1px)', opacity: 0.95, offset: 0.85 },
+        { transform: 'translateX(0)', opacity: 1, offset: 1 }
+      ],
+      {
+        duration: 500,
+        easing: 'ease-in-out'
+      }
+    );
   }
+}
+
+const bottomBar = document.getElementById("bottom-bar");
+function addBuffIcon(buffName) {
+  const buffIcon = document.createElement("div");
+  buffIcon.className = "w-10 h-10 bg-[url('./assets/sprites/statics/buff-icon.png')] bg-cover bg-center flex justify-center items-center p-2";
+  buffIcon.innerHTML = `<img src="./assets/sprites/statics/${buffName}.png" class="w-full h-full">`;
+  bottomBar.appendChild(buffIcon);
 }
 
 // Init shop once
