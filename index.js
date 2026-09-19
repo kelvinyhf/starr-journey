@@ -227,6 +227,9 @@ k.loadSprite("explosion-lg", "./assets/sprites/explosions/explosion-lg.png", {
   }
 });
 
+// Statics
+k.loadSprite("shield", "./assets/sprites/statics/shield-effect.png");
+
 // ------------------------------
 // Load sounds
 // ------------------------------
@@ -923,20 +926,29 @@ overlay.addEventListener("click", (e) => {
 // ------------------------------
 const SHOP_ITEMS = [
   { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "speedy.png", // 75
-    info: "Boosts your speed five times on start",
+    info: "Boosts your speed five times on start", bought: false,
     onBuy: () => {
       addBuffIcon("speedy");
       speed = 5;
     }
   },
   { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "shield.png", // 75
-    info: "Give Starr a 25 HP shield on start",
+    info: "Give Starr a 25 HP shield on start", bought: false,
     onBuy: () => {
       changeHealth(25, null, true);
+      const shield = k.add([
+        k.sprite("shield"),
+        k.scale(1.2),
+        k.pos(starr.pos),
+        k.anchor("center"),
+        k.opacity(0.75),
+        k.z(starr.z - 1)
+      ]);
+      shield.onUpdate(() => shield.pos = starr.pos);
     }
   },
   { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "lucky.png", // 100
-    info: "Spawns more good items and fewer bad ones",
+    info: "Spawns more good items and fewer bad ones", bought: false,
     onBuy: () => {
       addBuffIcon("lucky");
       for (const item of GAME_ITEMS) {
@@ -949,21 +961,21 @@ const SHOP_ITEMS = [
     }
   },
   { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "stasis.png", // 125
-    info: "Makes nearby obstacles move slower",
+    info: "Makes nearby obstacles move slower", bought: false,
     onBuy: () => {
       addBuffIcon("stasis");
       isStasis = true;
     }
   },
   { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "dodge.png", // 20 Gold
-    info: "35% of dodging obstacle when hit",
+    info: "35% of dodging obstacle when hit", bought: false,
     onBuy: () => {
       addBuffIcon("dodge");
       canDodge = true;
     }
   },
   { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "magnet.png", // 25 Gold
-    info: "Pulls nearby coins to your position automatically",
+    info: "Pulls nearby coins to your position automatically", bought: false,
     onBuy: () => {
       addBuffIcon("magnet");
       k.onUpdate(() => {
@@ -982,14 +994,14 @@ const SHOP_ITEMS = [
     }
   },
   { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "double.png", // 35 Gold
-    info: "Double all coins collected by two",
+    info: "Double all coins collected by two", bought: false,
     onBuy: () => {
       addBuffIcon("double");
       doubleCoins = true;
     }
   },
   /* { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "kaboom.png", // 50 Gold
-    info: "Ka? Then Boom!",
+    info: "Ka? Then Boom!", bought: false,
     onBuy: () => {
       
     }
@@ -1041,9 +1053,9 @@ function renderShopItems() {
   todayItems.forEach((item) => {
     const itemElement = document.createElement("button");
     itemElement.id = item.id;
-    itemElement.className = "flex flex-col justify-center items-center cursor-pointer";
+    itemElement.className = "flex flex-col justify-center items-center px-4 py-3 cursor-pointer";
     itemElement.innerHTML = `
-      <img src="./assets/sprites/statics/${item.icon}" class="w-12 h-12">
+      <img src="./assets/sprites/statics/${item.icon}" class="w-12 h-12" draggable="false">
       <span class="block text-lg [-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]">${item.name}</span>
       <div class="flex justify-between items-center gap-2">
         <img src="./assets/sprites/${item.currency}/frame1.png" class="w-4 h-4">
@@ -1062,25 +1074,15 @@ function renderShopItems() {
         focusingItem = item.id;
         shopItemInfoLabel.innerHTML = item.info;
 
-        // Remove pixel corner on other items and add to this item
+        // Remove pixel corner on all other items and add to this item
         for (const itemEl of shopItemsContainer.children) itemEl.classList.remove("pixel-corner");
         itemElement.classList.add("pixel-corner");
 
         return;
-      } else if (isTouchDevice && focusingItem === item.id) {
-        itemElement.classList.remove("pixel-corner");
       }
 
-      const isGold = item.currency === "coin";
-      const currentBalance = isGold ? coins : silverCoins;
-
-      if (currentBalance >= item.price) {
-        changeCoins(-item.price, null, isGold);
-        boughtItem(itemElement, item.currency, false);
-        item.onBuy();
-      } else {
-        boughtItem(itemElement, item.currency, true);
-      }
+      // Attempt to buy the item
+      buyItem(itemElement, item);
 
     });
     
@@ -1091,15 +1093,21 @@ function renderShopItems() {
       }
     });
 
+    itemElement.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "mouse") {
+        shopItemInfoLabel.innerHTML = "(Hover to see info)";
+      }
+    });
+
   });
 
 }
 
 // ShopItemInfoLabel inner text init
 if (isTouchDevice) {
-  shopItemInfoLabel.innerHTML = "(Click to see info)<br>&nbsp;";
+  shopItemInfoLabel.innerHTML = "(Click to see info)";
 } else {
-  shopItemInfoLabel.innerHTML = "(Hover to see info)<br>&nbsp;";
+  shopItemInfoLabel.innerHTML = "(Hover to see info)";
 }
 
 // Shop Timer
@@ -1140,16 +1148,30 @@ shopUI.addEventListener("click", (e) => {
   e.stopPropagation();
 });
 
-function boughtItem(btn, currency, failed = false) {
-  if (!failed) {
-    
-    // Mark as bought, play sfx and coin bounce up effect
-    btn.classList.add("pointer-events-none", "cursor-default", "opacity-50");
-    k.play(currency === "silver-coin" ? "coin1" : "coin2", { volume: 0.5 });
-    // ADD EFFECT
+function buyItem(btn, item) {
+  if (item.bought) return;
+
+  const isGold = item.currency === "coin";
+  const currentBalance = isGold ? coins : silverCoins;
+
+  // If enough coins
+  if (currentBalance >= item.price) {
+
+    // Buy the item and reduce coins
+    changeCoins(-item.price, null, isGold);
+    item.bought = true;
+    btn.classList.add("opacity-50");
+    item.onBuy();
+
+    // Play sfx, vfx, and show success prompt
+    k.play(item.currency === "silver-coin" ? "coin1" : "coin2", { volume: 0.5 });
+    // ADD VFX
+    shopItemInfoLabel.innerHTML = k.choose(["Purchase successful!", "Item acquired!", "A fine choice!"]);
 
   } else {
-    k.play("failed", { volume: 0.75 });
+
+    // Play sfx, vfn, and show fail prompt
+    k.play("failed", { volume: 0.5 });
     btn.animate(
       [
         { transform: 'translateX(0)', opacity: 0.5, offset: 0 },
@@ -1166,6 +1188,8 @@ function boughtItem(btn, currency, failed = false) {
         easing: 'ease-in-out'
       }
     );
+    shopItemInfoLabel.innerHTML = "Not enough coins!";
+
   }
 }
 
