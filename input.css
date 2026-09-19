@@ -324,10 +324,10 @@
     url('./assets/images/pixel-corner/bottom-left.png'),
     url('./assets/images/pixel-corner/bottom-right.png');
   background-position:
-    top left,
-    top right,
-    bottom left,
-    bottom right;
+    top 12px left 12px,
+    top 12px right 12px,
+    bottom 12px left 12px,
+    bottom 12px right 12px;
   background-repeat: no-repeat;
   background-size: 6px 6px;
 }

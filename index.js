@@ -37,6 +37,7 @@ let collectedCoins = 0;
 let collectedSilverCoins = 0;
 
 // Effects
+let hasShield = false;
 let isStasis = false;
 let canDodge = false;
 let doubleCoins = false;
@@ -229,6 +230,7 @@ k.loadSprite("explosion-lg", "./assets/sprites/explosions/explosion-lg.png", {
 
 // Statics
 k.loadSprite("shield", "./assets/sprites/statics/shield-effect.png");
+k.loadSprite("stasis", "./assets/sprites/statics/stasis-effect.png");
 
 // ------------------------------
 // Load sounds
@@ -431,7 +433,6 @@ k.loop(0.1, () => {
     k.opacity(randomOpacity),
     k.pos(k.rand(0, k.width()), -50),
     k.anchor("center"),
-    k.area(),
     k.z(1),
     "star"
   ]);
@@ -454,7 +455,6 @@ k.loop(0.025, () => {
     k.opacity(randomOpacity),
     k.pos(k.rand(0, k.width()), -50),
     k.anchor("center"),
-    k.area(),
     k.z(0),
     "star"
   ]);
@@ -477,7 +477,6 @@ k.loop(0.5, () => {
     k.opacity(randomOpacity),
     k.pos(k.rand(0, k.width()), -50),
     k.anchor("center"),
-    k.area(),
     k.z(2),
     "star"
   ]);
@@ -493,9 +492,9 @@ k.loop(0.5, () => {
 // Items
 // ------------------------------
 const MENU_ITEMS = [
-  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
-  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] },
-  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90] }
+  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
+  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
+  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 }
 ];
 
 let GAME_ITEMS = [
@@ -503,9 +502,9 @@ let GAME_ITEMS = [
   // Basic Items (Coin and Rocks)
   { name: "coin", type: "coin", weight: 1, anim: { anim: "idle" }, category: "positive" },
   { name: "silver-coin", type: "silver-coin", weight: 3, anim: { anim: "idle" }, category: "positive" },
-  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90], category: "negative" },
-  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90], category: "negative" },
-  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: [90, 90], category: "negative" },
+  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
 
   // Pickups
   { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
@@ -537,9 +536,6 @@ k.loop(0.1, () => {
 
     const itemConfig = getRandomItem(isInGame ? GAME_ITEMS : MENU_ITEMS);
 
-    const [w, h] = itemConfig.hitbox || [];
-    const hitbox = itemConfig.hitbox ? { shape: new k.Rect(k.vec2(-w / 2, -h / 2), w, h) } : {};
-
     const [minScale, maxScale] = itemConfig.scale || [0.75, 1];
     const randomScale = k.rand(minScale, maxScale);
 
@@ -552,7 +548,7 @@ k.loop(0.1, () => {
       k.scale(randomScale),
       k.rotate(k.rand(0, 360)),
       k.anchor("center"),
-      k.area(hitbox),
+      k.area({ scale: itemConfig.hitbox || 1 }),
       k.opacity(1),
       k.z(itemConfig.zIndex || 10),
       itemConfig.type,
@@ -565,7 +561,15 @@ k.loop(0.1, () => {
     item.onUpdate(() => {
       
       // Effect of the shop item "stasis"
-      item.pos.y += randomSpeed * k.dt() * (itemConfig.type === "rock" && isStasis && item.pos.dist(starr.pos) <= 175 ? 0.85 : 1);
+      item.pos.y += randomSpeed * k.dt() * (
+        itemConfig.type === "rock" &&
+        isStasis &&
+        item.pos.x >= starr.pos.x - 150 &&
+        item.pos.x <= starr.pos.x + 150 &&
+        item.pos.y >= starr.pos.y - 300 &&
+        item.pos.y <= starr.pos.y ?
+        k.map(item.pos.dist(starr.pos), 0, 300, 0.6, 1) : 1
+      );
       
       item.angle += spinSpeed * k.dt();
       if (item.pos.y > k.height() + 500) item.destroy();
@@ -596,7 +600,6 @@ function changeCoins(num, coinPos, isGold = false) {
     }
 
   }
-  
   
   // Spark and bounce if coinPos is provided
   if (coinPos) {
@@ -686,31 +689,16 @@ starr.onCollide("silver-coin", (coin) => {
 
 // Rocks
 const healthBar = document.getElementById("health-bar");
-function changeHealth(num, rockPos, isShield = false) {
+function changeHealth(num, rockPos) {
   health += num;
   if (health > 100) {
-    if (isShield) {
-      health = 125;
-    } else {
-      health = 100;
-    }
+    health = 100;
   } else if (health < 0) {
     health = 0;
   }
-
-  if (health <= 0) {
-    healthBar.src = "./assets/sprites/health-bar/0.png";
-  } else if (health <= 25) {
-    healthBar.src = "./assets/sprites/health-bar/25.png";
-  } else if (health <= 50) {
-    healthBar.src = "./assets/sprites/health-bar/50.png";
-  } else if (health <= 75) {
-    healthBar.src = "./assets/sprites/health-bar/75.png";
-  } else if (health <= 100) {
-    healthBar.src = "./assets/sprites/health-bar/100.png";
-  } else if (health <= 125) {
-    healthBar.src = "./assets/sprites/health-bar/125.png";
-  }
+  
+  // Set health bar
+  healthBar.src = `./assets/sprites/health-bar/${health}.png`;
   
   // Destroy Starr when health < 0
   if (rockPos) {
@@ -754,11 +742,26 @@ function explode(rockPos, fatal = false) {
 starr.onCollide("rock", (rock) => {
   if (isInvincible || !isInGame) return;
 
-  // Effect of the shop item "dodge"
   if (canDodge && k.chance(1)) {
+    
+    // Effect of the shop item "dodge"
     rock.onUpdate(() => {
-      rock.opacity -= 3 * k.dt(); // Add more effects
+      rock.opacity -= 3 * k.dt(); // ADD VFX
     });
+    
+  } else if (hasShield) {
+    
+    // Effect of the shop item "shield"
+    hasShield = false;
+    rock.destroy();
+    
+    // Destroy shield and set health bar 
+    const shield = k.get("shield")[0];
+    shield.destroy();
+    healthBar.src = `./assets/sprites/health-bar/${health}.png`;
+    
+    // ADD VFX
+    
   } else {
     isInvincible = true;
 
@@ -824,14 +827,10 @@ function recoverEffect() {
 starr.onCollide("health-potion", (potion) => {
   if (!isInGame) return;
 
-  // Destroy potion and increase health
+  // Destroy potion, increase health (if don't have shield), play sfx
   potion.destroy();
   recoverEffect();
-  if (health > 100) {
-    changeHealth(+25, null, true);
-  } else {
-    changeHealth(+25);
-  }
+  if (!hasShield) changeHealth(+25);
   k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
 });
 
@@ -935,16 +934,21 @@ const SHOP_ITEMS = [
   { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "shield.png", // 75
     info: "Give Starr a 25 HP shield on start", bought: false,
     onBuy: () => {
-      changeHealth(25, null, true);
+      hasShield = true;
+      
+      // Add shield that follows Starr, and change health bar
       const shield = k.add([
         k.sprite("shield"),
         k.scale(1.2),
         k.pos(starr.pos),
         k.anchor("center"),
         k.opacity(0.75),
-        k.z(starr.z - 1)
+        k.z(starr.z - 1),
+        "shield"
       ]);
       shield.onUpdate(() => shield.pos = starr.pos);
+      healthBar.src = "./assets/sprites/health-bar/125.png";
+      
     }
   },
   { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "lucky.png", // 100
@@ -965,6 +969,16 @@ const SHOP_ITEMS = [
     onBuy: () => {
       addBuffIcon("stasis");
       isStasis = true;
+      
+      const stasis = k.add([
+        k.sprite("stasis", { width: 150, height: 150 }),
+        k.pos(starr.pos),
+        k.anchor("center"),
+        k.opacity(0.1),
+        k.z(starr.z - 1)
+      ]);
+      stasis.onUpdate(() => stasis.pos = starr.pos);
+      
     }
   },
   { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "dodge.png", // 20 Gold
