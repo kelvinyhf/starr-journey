@@ -280,14 +280,10 @@
     color: var(--gray-12);
   }
   
-  :focus {
+  :focus, :focus-visible {
     outline: none;
   }
-
-  :focus-visible {
-    outline: 1px solid var(--gray-12);
-  }
-
+  
 }
 
 @utility no-scrollbar {
@@ -296,6 +292,44 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+
+
+@utility pixel-frame {
+  border-style: solid;
+  border-width: 12px;
+  border-image-width: 12px;
+  border-image-source: url("./assets/images/pixel-frame.png");
+  border-image-slice: 24;
+  border-radius: 12px;
+}
+
+@utility pixel-border {
+  clip-path: polygon(
+    4px 0, calc(100% - 4px) 0,
+    calc(100% - 4px) 4px, 100% 4px,
+    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px),
+    calc(100% - 4px) 100%,
+    4px 100%, 4px calc(100% - 4px),
+    0 calc(100% - 4px),
+    0 4px, 4px 4px
+  );
+}
+
+@utility pixel-corner {
+  background-image:
+    url('./assets/images/pixel-corner/top-left.png'),
+    url('./assets/images/pixel-corner/top-right.png'),
+    url('./assets/images/pixel-corner/bottom-left.png'),
+    url('./assets/images/pixel-corner/bottom-right.png');
+  background-position:
+    top 12px left 12px,
+    top 12px right 12px,
+    bottom 12px left 12px,
+    bottom 12px right 12px;
+  background-repeat: no-repeat;
+  background-size: 6px 6px;
 }
 
 /* PWA Support */
