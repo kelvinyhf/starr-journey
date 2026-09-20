@@ -230,6 +230,7 @@ k.loadSprite("explosion-lg", "./assets/sprites/explosions/explosion-lg.png", {
 
 // Statics
 k.loadSprite("shield", "./assets/sprites/statics/shield-effect.png");
+k.loadSprite("shield-explosion", "./assets/sprites/statics/shield-explosion.png");
 k.loadSprite("stasis", "./assets/sprites/statics/stasis-effect.png");
 
 // ------------------------------
@@ -247,6 +248,8 @@ k.loadSound("gameover", "./assets/sounds/gameover.wav");
 k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
 k.loadSound("Pixelland", "./assets/sounds/Pixelland.mp3");
 k.loadSound("Reformat", "./assets/sounds/Reformat.mp3");
+k.loadSound("shield-explode", "./assets/sounds/shield-explode.wav");
+k.loadSound("dodge", "./assets/sounds/dodge.wav");
 
 // Load Shader
 k.loadShader("flash", null, `
@@ -742,25 +745,52 @@ function explode(rockPos, fatal = false) {
 starr.onCollide("rock", (rock) => {
   if (isInvincible || !isInGame) return;
 
-  if (canDodge && k.chance(1)) {
-    
+  if (canDodge && k.chance(0.35)) {
+    isInvincible = true;
+
     // Effect of the shop item "dodge"
-    rock.onUpdate(() => {
-      rock.opacity -= 3 * k.dt(); // ADD VFX
+    rock.onUpdate(() => rock.opacity -= 3 * k.dt());
+    k.play("dodge", { volume: 0.8 });
+
+    // Starr flicks
+    const startX = starr.pos.x;
+    k.tween(startX, startX + 25, 0.1, (x) => starr.pos.x = x).then(() => {
+      k.tween(startX + 25, startX, 0.1, (x) => starr.pos.x = x);
     });
-    
+
+    // Invincible for 1 second
+    setTimeout(() => {
+      isInvincible = false;
+      starr.opacity = 1;
+    }, 1000);
+
   } else if (hasShield) {
     
     // Effect of the shop item "shield"
     hasShield = false;
     rock.destroy();
     
-    // Destroy shield and set health bar 
+    // Destroy shield, set health bar, and explosion effect
     const shield = k.get("shield")[0];
+    const explosion = k.add([
+      k.sprite("shield-explosion", { width: shield.width, height: shield.height }),
+      k.pos(starr.pos),
+      k.scale(1),
+      k.anchor("center"),
+      k.opacity(0.75),
+      k.z(starr.z - 1)
+    ]);
+
     shield.destroy();
     healthBar.src = `./assets/sprites/health-bar/${health}.png`;
-    
-    // ADD VFX
+
+    k.play("shield-explode", { volume: 0.5 });
+    explosion.onUpdate(() => {
+      explosion.pos = starr.pos;
+      explosion.scale = explosion.scale.add(k.vec2(8 * k.dt()));
+      explosion.opacity -= 2 * k.dt();
+      if (explosion.opacity <= 0) explosion.destroy();
+    });
     
   } else {
     isInvincible = true;
@@ -924,19 +954,12 @@ overlay.addEventListener("click", (e) => {
 // Shop Items
 // ------------------------------
 const SHOP_ITEMS = [
-  { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 1, icon: "speedy.png", // 75
-    info: "Boosts your speed five times on start", bought: false,
-    onBuy: () => {
-      addBuffIcon("speedy");
-      speed = 5;
-    }
-  },
-  { id: "item-shield", name: "Shield", currency: "silver-coin", price: 1, icon: "shield.png", // 75
+  { id: "item-shield", name: "Shield", currency: "silver-coin", price: 30, icon: "shield.png",
     info: "Give Starr a 25 HP shield on start", bought: false,
     onBuy: () => {
+      addBuffIcon("shield");
       hasShield = true;
       
-      // Add shield that follows Starr, and change health bar
       const shield = k.add([
         k.sprite("shield"),
         k.scale(1.2),
@@ -951,20 +974,14 @@ const SHOP_ITEMS = [
       
     }
   },
-  { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 1, icon: "lucky.png", // 100
-    info: "Spawns more good items and fewer bad ones", bought: false,
+  { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 50, icon: "speedy.png",
+    info: "Boosts your speed five times on start", bought: false,
     onBuy: () => {
-      addBuffIcon("lucky");
-      for (const item of GAME_ITEMS) {
-        if (item.category === "positive") {
-          item.weight *= 2;
-        } else if (item.category === "negative") {
-          item.weight /= 2;
-        }
-      }
+      addBuffIcon("speedy");
+      speed = 5;
     }
   },
-  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 1, icon: "stasis.png", // 125
+  { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 80, icon: "stasis.png",
     info: "Makes nearby obstacles move slower", bought: false,
     onBuy: () => {
       addBuffIcon("stasis");
@@ -981,14 +998,27 @@ const SHOP_ITEMS = [
       
     }
   },
-  { id: "item-dodge", name: "Dodge", currency: "silver-coin", price: 1, icon: "dodge.png", // 20 Gold
+  { id: "item-lucky", name: "Lucky", currency: "silver-coin", price: 100, icon: "lucky.png",
+    info: "Spawns more good items and fewer bad ones", bought: false,
+    onBuy: () => {
+      addBuffIcon("lucky");
+      for (const item of GAME_ITEMS) {
+        if (item.category === "positive") {
+          item.weight *= 2;
+        } else if (item.category === "negative") {
+          item.weight /= 2;
+        }
+      }
+    }
+  },
+  { id: "item-dodge", name: "Dodge", currency: "coin", price: 20, icon: "dodge.png",
     info: "35% of dodging obstacle when hit", bought: false,
     onBuy: () => {
       addBuffIcon("dodge");
       canDodge = true;
     }
   },
-  { id: "item-magnet", name: "Magnet", currency: "silver-coin", price: 1, icon: "magnet.png", // 25 Gold
+  { id: "item-magnet", name: "Magnet", currency: "coin", price: 25, icon: "magnet.png",
     info: "Pulls nearby coins to your position automatically", bought: false,
     onBuy: () => {
       addBuffIcon("magnet");
@@ -1007,24 +1037,18 @@ const SHOP_ITEMS = [
       });
     }
   },
-  { id: "item-double", name: "Double", currency: "silver-coin", price: 1, icon: "double.png", // 35 Gold
+  { id: "item-double", name: "Double", currency: "coin", price: 35, icon: "double.png",
     info: "Double all coins collected by two", bought: false,
     onBuy: () => {
       addBuffIcon("double");
       doubleCoins = true;
     }
   },
-  /* { id: "item-kaboom", name: "Kaboom", currency: "silver-coin", price: 1, icon: "kaboom.png", // 50 Gold
-    info: "Ka? Then Boom!", bought: false,
-    onBuy: () => {
-      
-    }
-  }, */
 ];
 
 const SAVED_SHOP_WINDOW = "starr_shop_window";
 const SAVED_SHOP_ITEMS = "starr_shop_items";
-const REFRESH_INTERVAL = 10000;
+const REFRESH_INTERVAL = 1000 * 60 * 10;
 
 function getCurrentShopWindow() {
   return Math.floor(Date.now() / REFRESH_INTERVAL).toString();
