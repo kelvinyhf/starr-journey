@@ -325,7 +325,7 @@ function gameOver() {
         <img src="./assets/sprites/silver-coin/frame1.png" class="w-5 h-5">
         <span class="text-xl">${collectedSilverCoins}</span>
       </span>
-      ${doubleCoins ? "<span class='text-lg'>(Doubled!)</span>" : ""}
+      ${doubleCoins ? "(Doubled!)" : ""}
     `;
     bestDistanceLabel.innerHTML = `Best Distance <span class="text-xl text-red-10">${bestDistance}m</span>`;
   }, 1000);
