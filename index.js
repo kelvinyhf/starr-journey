@@ -53,6 +53,7 @@ k.loadSprite("starr-orange-border", "./assets/sprites/starr/orange-border.png");
 k.loadSprite("rock-sm", "./assets/sprites/rocks/rock-sm.png");
 k.loadSprite("rock-md", "./assets/sprites/rocks/rock-md.png");
 k.loadSprite("rock-lg", "./assets/sprites/rocks/rock-lg.png");
+k.loadSprite("rock-fs", "./assets/sprites/rocks/rock-fs.png");
 
 // Coin
 k.loadSprite(
@@ -143,6 +144,9 @@ k.loadSprite(
     }
   }
 );
+
+// Coin Bag
+k.loadSprite("coin-bag", "./assets/sprites/pickups/coin-bag.png");
 
 // Health Potion
 k.loadSprite("health-potion", "./assets/sprites/pickups/health-potion.png");
@@ -508,10 +512,12 @@ let GAME_ITEMS = [
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
   { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "rock-fs", type: "rock", weight: 0.3, scale: [0.1, 0.3], hitbox: 0.15, speed: [750, 1000], category: "negative" },
 
   // Pickups
   { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
-  { name: "speed-potion", type: "speed-potion", weight: 0.3, scale: [1, 1.25], category: "positive" },
+  { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25], category: "positive" },
+  { name: "coin-bag", type: "coin-bag", weight: 0.15, scale: [1, 1.25], category: "positive" },
 
 ];
 
@@ -531,7 +537,7 @@ function getRandomItem(config) {
 let itemTimer = 0;
 k.loop(0.1, () => {
   itemTimer += 0.1;
-  const baseInterval = isInGame ? 0.35 : 0.75;
+  const baseInterval = isInGame ? 0.3 : 0.75;
   const targetInterval = baseInterval / getDifficulty();
 
   if (itemTimer >= targetInterval) {
@@ -688,6 +694,24 @@ starr.onCollide("silver-coin", (coin) => {
   coin.destroy();
   changeCoins(1, coin.pos, false);
   k.play("coin1", { volume: 0.5 });
+});
+
+// Coin Bag
+starr.onCollide("coin-bag", (bag) => {
+  if (!isInGame) return;
+
+  // Destroy bag and play sfx
+  bag.destroy();
+  k.play("coin1", { volume: 0.4 }).onEnd(() => k.play("coin2", { volume: 0.4 }));
+
+  // Add 8-24 gold coins
+  const goldCoins =  k.randi(2, 6);
+  for (let i = 0; i < goldCoins; i++) changeCoins(4, bag.pos, true);
+  
+  // Add 16-48 silver coins
+  const silverCoins = k.randi(2, 6);
+  for (let i = 0; i < silverCoins; i++) changeCoins(8, bag.pos, false);
+
 });
 
 // Rocks
@@ -1004,9 +1028,9 @@ const SHOP_ITEMS = [
       addBuffIcon("lucky");
       for (const item of GAME_ITEMS) {
         if (item.category === "positive") {
-          item.weight *= 2;
+          item.weight *= 1.5;
         } else if (item.category === "negative") {
-          item.weight /= 2;
+          item.weight /= 1.5;
         }
       }
     }
@@ -1048,7 +1072,7 @@ const SHOP_ITEMS = [
 
 const SAVED_SHOP_WINDOW = "starr_shop_window";
 const SAVED_SHOP_ITEMS = "starr_shop_items";
-const REFRESH_INTERVAL = 1000 * 60 * 10;
+const REFRESH_INTERVAL = 1000 * 60 * 5;
 
 function getCurrentShopWindow() {
   return Math.floor(Date.now() / REFRESH_INTERVAL).toString();
