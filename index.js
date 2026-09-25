@@ -280,6 +280,7 @@ function playBGM(index) {
 const menuUI = document.getElementById("menu-ui");
 const gameUI = document.getElementById("game-ui");
 const deathScreenUI = document.getElementById("death-screen-ui");
+const playBtn = document.getElementById("play-btn");
 const collectedCoinsLabel = document.getElementById("collected-coins-label");
 const retryBtn = document.getElementById("retry-btn");
 
@@ -340,7 +341,7 @@ function getDifficulty() {
   return Math.min(1 + (meters / 20) * 0.025, 5);
 }
 
-menuUI.addEventListener("click", () => enterGame());
+playBtn.addEventListener("click", () => enterGame());
 retryBtn.addEventListener("click", () => location.reload());
 
 // Loading Screen
@@ -965,13 +966,11 @@ k.onUpdate(() => {
 // Overlay and Modals
 // ------------------------------
 const overlay = document.getElementById("overlay");
-overlay.addEventListener("click", (e) => {
-  e.stopPropagation();
 
-  // Hide overlay and all modals
+// Hide overlay and all modals
+overlay.addEventListener("click", () => {
   overlay.classList.add("hidden");
   shopUI.classList.add("hidden");
-
 });
 
 // ------------------------------
@@ -1117,7 +1116,7 @@ function renderShopItems() {
     itemElement.id = item.id;
     itemElement.className = "flex flex-col justify-center items-center px-4 py-3 cursor-pointer";
     itemElement.innerHTML = `
-      <img src="./assets/sprites/statics/${item.icon}" class="w-12 h-12" draggable="false">
+      <img src="./assets/sprites/statics/${item.icon}" class="w-12 h-12">
       <span class="block text-lg [-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]">${item.name}</span>
       <div class="flex justify-between items-center gap-2">
         <img src="./assets/sprites/${item.currency}/frame1.png" class="w-4 h-4">
@@ -1201,13 +1200,8 @@ updateShopTimer();
 const shopBtn = document.getElementById("shop-btn");
 const shopUI = document.getElementById("shop-ui");
 shopBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
   shopUI.classList.remove("hidden");
   overlay.classList.remove("hidden");
-});
-
-shopUI.addEventListener("click", (e) => {
-  e.stopPropagation();
 });
 
 function buyItem(btn, item) {
