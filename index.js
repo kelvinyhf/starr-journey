@@ -52,9 +52,9 @@ let isDoubleCoins = false;
 k.loadSprite("starr", "./assets/sprites/starr/default.png");
 k.loadSprite("starr-green-border", "./assets/sprites/starr/green-border.png");
 k.loadSprite("starr-orange-border", "./assets/sprites/starr/orange-border.png");
-// k.loadSprite("starr-purple-border", "./assets/sprites/starr/purple-border.png");
-// k.loadSprite("starr-pink-border", "./assets/sprites/starr/pink-border.png");
-// k.loadSprite("starr-black-border", "./assets/sprites/starr/black-border.png");
+k.loadSprite("starr-purple-border", "./assets/sprites/starr/purple-border.png");
+k.loadSprite("starr-pink-border", "./assets/sprites/starr/pink-border.png");
+k.loadSprite("starr-black-border", "./assets/sprites/starr/black-border.png");
 
 // Rocks
 k.loadSprite("rock-sm", "./assets/sprites/rocks/rock-sm.png");
@@ -201,7 +201,7 @@ k.loadSprite(
 
 // Blindness Potion
 k.loadSprite("blindness-potion", "./assets/sprites/pickups/blindness-potion.png");
-/* k.loadSprite(
+k.loadSprite(
   "blindness",
   [
     "./assets/sprites/blindness/frame1.png",
@@ -219,11 +219,11 @@ k.loadSprite("blindness-potion", "./assets/sprites/pickups/blindness-potion.png"
       }
     }
   }
-); */
+);
 
 // Confusion Potion
 k.loadSprite("confusion-potion", "./assets/sprites/pickups/confusion-potion.png");
-/* k.loadSprite(
+k.loadSprite(
   "confusion",
   [
     "./assets/sprites/confusion/frame1.png",
@@ -241,11 +241,11 @@ k.loadSprite("confusion-potion", "./assets/sprites/pickups/confusion-potion.png"
       }
     }
   }
-); */
+);
 
 // Unknown Potion
 k.loadSprite("unknown-potion", "./assets/sprites/pickups/unknown-potion.png");
-/* k.loadSprite(
+k.loadSprite(
   "unknown",
   [
     "./assets/sprites/unknown/frame1.png",
@@ -263,7 +263,7 @@ k.loadSprite("unknown-potion", "./assets/sprites/pickups/unknown-potion.png");
       }
     }
   }
-); */
+);
 
 // Explosion animations
 k.loadSprite("explosion-sm", "./assets/sprites/explosions/explosion-sm.png", {
@@ -631,14 +631,17 @@ let GAME_ITEMS = [
   // Basic Items (Coin and Rocks)
   { name: "coin", type: "coin", weight: 1, anim: { anim: "idle" }, category: "positive" },
   { name: "silver-coin", type: "silver-coin", weight: 2, anim: { anim: "idle" }, category: "positive" },
-  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
-  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
-  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
-  { name: "rock-fs", type: "rock", weight: 0.3, scale: [0.1, 0.3], hitbox: 0.15, speed: [750, 1000], category: "negative" },
+  { name: "rock-sm", type: "rock", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "rock-md", type: "rock", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "rock-lg", type: "rock", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "rock-fs", type: "rock", weight: 0.35, scale: [0.1, 0.3], hitbox: 0.15, speed: [750, 1000], category: "negative" },
 
   // Pickups
   { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
   { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25], category: "positive" },
+  { name: "blindness-potion", type: "blindness-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
+  { name: "confusion-potion", type: "confusion-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
+  { name: "unknown-potion", type: "unknown-potion", weight: 0.01, scale: [1, 1.25], category: "negative" },
   { name: "coin-bag", type: "coin-bag", weight: 0.1, scale: [1, 1.25], category: "positive" },
 
 ];
