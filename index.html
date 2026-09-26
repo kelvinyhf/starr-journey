@@ -86,33 +86,37 @@
   <script type="module" src="./index.js" defer></script>
   
 </head>
-<body class="no-scrollbar select-none bg-purple-1">
+<body class="no-scrollbar bg-purple-1">
   
   <!-- Loading Screen -->
   <div id="loading-screen" class="pt-[env(safe-area-inset-top)] absolute inset-0 w-full h-full bg-purple-1 z-99 flex justify-center items-center">
     <span class="text-2xl text-center">Loading... :)</span>
   </div>
   
-  <!-- Game Canva -->
+  <!-- Game Canvas -->
   <canvas id="canvas" class="pt-[env(safe-area-inset-top)]"></canvas>
 
   <!-- Menu UI -->
   <div id="menu-ui" class="pt-[env(safe-area-inset-top)] absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.3)] flex flex-col justify-between items-center">
 
     <!-- Home Screen -->
-    <div class="flex-1 flex flex-col justify-center items-center gap-6 w-full px-6">
+    <div class="flex-1 flex flex-col justify-center items-center gap-8 w-full px-6">
       
       <!-- Logo -->
-      <div class="flex justify-center items-center gap-5">
-        <img src="./assets/sprites/statics/crown.png" class="w-8">
-        <span class="block text-3xl text-center [-webkit-text-stroke:6px_#000] [paint-order:stroke_fill]"><span class="text-amber-11">Starr</span><br>Journey</span>
-        <img src="./assets/sprites/statics/crown.png" class="w-8">
+      <div class="flex flex-col items-center gap-2">
+        <div class="flex justify-center items-center gap-5">
+          <img src="./assets/sprites/statics/crown.png" class="w-8">
+          <span class="block text-3xl text-center [-webkit-text-stroke:6px_#000] [paint-order:stroke_fill]"><span class="text-amber-11">Starr</span><br>Journey</span>
+          <img src="./assets/sprites/statics/crown.png" class="w-8">
+        </div>
+
+        <!-- Tip Label -->
+        <span id="tip-label" class="block text-lg text-center"></span>
+
       </div>
-      
-      <span id="quote" class="block text-xl text-center">Click anywhere to start</span>
-      
+
       <!-- Buttons -->
-      <div class="flex justify-center items-center gap-4 w-full">
+      <div class="flex justify-center items-center gap-5 w-full">
 
         <!-- Shop -->
         <button id="shop-btn" class="flex flex-col items-center cursor-pointer -mb-6 -rotate-4">

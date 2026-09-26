@@ -264,7 +264,14 @@
 
 /* Base Styles */
 @layer base {
-  
+
+  * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
   html {
     overflow: hidden;
     background-color: var(--bg-purple-1);

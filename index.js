@@ -9,22 +9,26 @@ const k = kaplay({
   global: false
 });
 
+// Make images not draggable
+document.addEventListener('dragstart', (e) => e.preventDefault());
+
 // States
 const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 
 // Data storage
 const METERS = "starr_meters";
 const COINS = "starr_coins";
-const SILVER_COIN = "starr_silver_coins";
+const SILVER_COINS = "starr_silver_coins";
 let bestDistance = parseFloat(localStorage.getItem(METERS) || "0", 10);
 let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
-let silverCoins = parseInt(localStorage.getItem(SILVER_COIN) || "0", 10);
+let silverCoins = parseInt(localStorage.getItem(SILVER_COINS) || "0", 10);
 
 // Game const
-const minX = (k.width() / 2) - 240;
-const maxX = (k.width() / 2) + 240;
+const MIN_X = Math.max((k.width() / 2) - 240, 0);
+const MAX_X = Math.min((k.width() / 2) + 240, k.width());
 
 // Game vars and flags
+let controlMode = "mouse";
 let isInGame = false;
 let isInvincible = false;
 let invincibleOnStart = false;
@@ -40,7 +44,7 @@ let collectedSilverCoins = 0;
 let hasShield = false;
 let isStasis = false;
 let canDodge = false;
-let doubleCoins = false;
+let isDoubleCoins = false;
 
 // ------------------------------
 // Load sprites
@@ -48,6 +52,9 @@ let doubleCoins = false;
 k.loadSprite("starr", "./assets/sprites/starr/default.png");
 k.loadSprite("starr-green-border", "./assets/sprites/starr/green-border.png");
 k.loadSprite("starr-orange-border", "./assets/sprites/starr/orange-border.png");
+// k.loadSprite("starr-purple-border", "./assets/sprites/starr/purple-border.png");
+// k.loadSprite("starr-pink-border", "./assets/sprites/starr/pink-border.png");
+// k.loadSprite("starr-black-border", "./assets/sprites/starr/black-border.png");
 
 // Rocks
 k.loadSprite("rock-sm", "./assets/sprites/rocks/rock-sm.png");
@@ -192,6 +199,72 @@ k.loadSprite(
   }
 );
 
+// Blindness Potion
+k.loadSprite("blindness-potion", "./assets/sprites/pickups/blindness-potion.png");
+/* k.loadSprite(
+  "blindness",
+  [
+    "./assets/sprites/blindness/frame1.png",
+    "./assets/sprites/blindness/frame2.png",
+    "./assets/sprites/blindness/frame3.png",
+    "./assets/sprites/blindness/frame4.png"
+  ],
+  {
+    anims: {
+      blindness: {
+        from: 0,
+        to: 3,
+        speed: 20,
+        loop: false
+      }
+    }
+  }
+); */
+
+// Confusion Potion
+k.loadSprite("confusion-potion", "./assets/sprites/pickups/confusion-potion.png");
+/* k.loadSprite(
+  "confusion",
+  [
+    "./assets/sprites/confusion/frame1.png",
+    "./assets/sprites/confusion/frame2.png",
+    "./assets/sprites/confusion/frame3.png",
+    "./assets/sprites/confusion/frame4.png"
+  ],
+  {
+    anims: {
+      confusion: {
+        from: 0,
+        to: 3,
+        speed: 20,
+        loop: false
+      }
+    }
+  }
+); */
+
+// Unknown Potion
+k.loadSprite("unknown-potion", "./assets/sprites/pickups/unknown-potion.png");
+/* k.loadSprite(
+  "unknown",
+  [
+    "./assets/sprites/unknown/frame1.png",
+    "./assets/sprites/unknown/frame2.png",
+    "./assets/sprites/unknown/frame3.png",
+    "./assets/sprites/unknown/frame4.png"
+  ],
+  {
+    anims: {
+      unknown: {
+        from: 0,
+        to: 3,
+        speed: 20,
+        loop: false
+      }
+    }
+  }
+); */
+
 // Explosion animations
 k.loadSprite("explosion-sm", "./assets/sprites/explosions/explosion-sm.png", {
   sliceX: 8,
@@ -247,7 +320,7 @@ k.loadSound("explosion2", "./assets/sounds/explosion2.wav");
 k.loadSound("buff1", "./assets/sounds/buff1.wav");
 k.loadSound("buff2", "./assets/sounds/buff2.wav");
 k.loadSound("buff3", "./assets/sounds/buff3.wav");
-k.loadSound("failed", "./assets/sounds/failed.wav")
+k.loadSound("failed", "./assets/sounds/failed.wav");
 k.loadSound("gameover", "./assets/sounds/gameover.wav");
 k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
 k.loadSound("Pixelland", "./assets/sounds/Pixelland.mp3");
@@ -284,8 +357,9 @@ const playBtn = document.getElementById("play-btn");
 const collectedCoinsLabel = document.getElementById("collected-coins-label");
 const retryBtn = document.getElementById("retry-btn");
 
-function enterGame() {
+function enterGame(mode) {
   isInGame = true;
+  controlMode = mode;
   menuUI.classList.add('hidden');
   gameUI.classList.remove('hidden');
   playBGM(startIndex);
@@ -306,14 +380,14 @@ function gameOver() {
   }
 
   // Set coins + Effect of the shop item "double"
-  collectedCoins *= (doubleCoins ? 2 : 1);
+  collectedCoins *= (isDoubleCoins ? 2 : 1);
   coins += collectedCoins;
   localStorage.setItem(COINS, coins);
   coinLabel.innerText = coins;
 
-  collectedSilverCoins *= (doubleCoins ? 2 : 1);
+  collectedSilverCoins *= (isDoubleCoins ? 2 : 1);
   silverCoins += collectedSilverCoins;
-  localStorage.setItem(SILVER_COIN, silverCoins);
+  localStorage.setItem(SILVER_COINS, silverCoins);
   silverCoinLabel.innerText = silverCoins;
 
   setTimeout(() => {
@@ -330,7 +404,7 @@ function gameOver() {
         <img src="./assets/sprites/silver-coin/frame1.png" class="w-5 h-5">
         <span class="text-xl">${collectedSilverCoins}</span>
       </span>
-      ${doubleCoins ? "(Doubled!)" : ""}
+      ${isDoubleCoins ? "(Doubled!)" : ""}
     `;
     bestDistanceLabel.innerHTML = `Best Distance <span class="text-xl text-red-10">${bestDistance}m</span>`;
   }, 1000);
@@ -341,13 +415,41 @@ function getDifficulty() {
   return Math.min(1 + (meters / 20) * 0.025, 5);
 }
 
-playBtn.addEventListener("click", () => enterGame());
+// Keys pressed tracker
+const keysPressed = {};
+window.addEventListener("keydown", (e) => keysPressed[e.key.toLowerCase()] = true);
+window.addEventListener("keyup", (e) => keysPressed[e.key.toLowerCase()] = false);
+
+// Enter / Restart Game
+playBtn.addEventListener("click", () => enterGame("mouse"));
 retryBtn.addEventListener("click", () => location.reload());
+
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space") {
+    if (!isInGame) {
+      enterGame("keyboard");
+    } else if (died) {
+      location.reload();
+    }
+  }
+});
 
 // Loading Screen
 document.addEventListener("DOMContentLoaded", () => {
   k.onLoad(() => document.getElementById("loading-screen").remove());
 });
+
+// Random tip on menu screen
+const tipLabel = document.getElementById("tip-label");
+const TIPS = [
+  "Press Space to enter Keyboard Mode!",
+  "What does the 'Black Potion' do?",
+  "Just keep 'Stardancing'!",
+  "Thank you for playing! :D",
+  "How far can you get?",
+];
+
+tipLabel.innerText = k.choose(TIPS);
 
 // ------------------------------
 // Starr
@@ -374,15 +476,33 @@ starr.onUpdate(() => {
   }
   
   if (isInGame) {
-    if (controlling) {
 
-      // Make Starr follow mouse smoothly
-      const mouseX = k.toWorld(k.mousePos()).x;
-      const targetX = k.clamp(mouseX, minX, maxX);
-      starr.pos.x = k.lerp(starr.pos.x, targetX, 0.15);
+    if (controlMode === "mouse") {
+      if (controlling) {
 
+        // Make Starr follow mouse smoothly
+        const mouseX = k.toWorld(k.mousePos()).x;
+        const targetX = k.clamp(mouseX, MIN_X, MAX_X);
+        starr.pos.x = k.lerp(starr.pos.x, targetX, 0.15);
+
+      } else {
+        starr.pos.x = k.lerp(starr.pos.x, baseX, 0.15);
+      }
     } else {
-      starr.pos.x = k.lerp(starr.pos.x, baseX, 0.15);
+
+      const moveLeft = keysPressed["a"] || keysPressed["arrowleft"];
+      const moveRight = keysPressed["d"] || keysPressed["arrowright"];
+      const keyboardSpeed = 500;
+
+      // Get direction
+      let dir = 0;
+      if (moveLeft) dir -= 1;
+      if (moveRight) dir += 1;
+
+      // Make Starr moves
+      starr.pos.x += dir * keyboardSpeed * k.dt();
+      starr.pos.x = k.clamp(starr.pos.x, MIN_X, MAX_X);
+
     }
     
     // Invincible on start
@@ -394,6 +514,7 @@ starr.onUpdate(() => {
         starr.opacity = 1;
       }, 1000);
     }
+
   }
 
   // Make it float and spins
@@ -509,7 +630,7 @@ let GAME_ITEMS = [
 
   // Basic Items (Coin and Rocks)
   { name: "coin", type: "coin", weight: 1, anim: { anim: "idle" }, category: "positive" },
-  { name: "silver-coin", type: "silver-coin", weight: 3, anim: { anim: "idle" }, category: "positive" },
+  { name: "silver-coin", type: "silver-coin", weight: 2, anim: { anim: "idle" }, category: "positive" },
   { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
   { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
   { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
@@ -518,7 +639,7 @@ let GAME_ITEMS = [
   // Pickups
   { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
   { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25], category: "positive" },
-  { name: "coin-bag", type: "coin-bag", weight: 0.15, scale: [1, 1.25], category: "positive" },
+  { name: "coin-bag", type: "coin-bag", weight: 0.1, scale: [1, 1.25], category: "positive" },
 
 ];
 
@@ -554,7 +675,7 @@ k.loop(0.1, () => {
 
     const item = k.add([
       k.sprite(itemConfig.name, itemConfig.anim || {}),
-      k.pos(k.rand(minX, maxX), -500),
+      k.pos(k.rand(MIN_X, MAX_X), -500),
       k.scale(randomScale),
       k.rotate(k.rand(0, 360)),
       k.anchor("center"),
@@ -605,7 +726,7 @@ function changeCoins(num, coinPos, isGold = false) {
       coinLabel.innerText = coins;
     } else {
       silverCoins += num;
-      localStorage.setItem(SILVER_COIN, silverCoins);
+      localStorage.setItem(SILVER_COINS, silverCoins);
       silverCoinLabel.innerText = silverCoins;
     }
 
@@ -706,12 +827,12 @@ starr.onCollide("coin-bag", (bag) => {
   k.play("coin1", { volume: 0.4 }).onEnd(() => k.play("coin2", { volume: 0.4 }));
 
   // Add 8-24 gold coins
-  const goldCoins =  k.randi(2, 6);
-  for (let i = 0; i < goldCoins; i++) changeCoins(4, bag.pos, true);
+  const randomGoldCoins =  k.randi(2, 6);
+  for (let i = 0; i < randomGoldCoins; i++) changeCoins(4, bag.pos, true);
   
   // Add 16-48 silver coins
-  const silverCoins = k.randi(2, 6);
-  for (let i = 0; i < silverCoins; i++) changeCoins(8, bag.pos, false);
+  const randomSilverCoins = k.randi(2, 6);
+  for (let i = 0; i < randomSilverCoins; i++) changeCoins(8, bag.pos, false);
 
 });
 
@@ -833,10 +954,38 @@ starr.onCollide("rock", (rock) => {
   }
 });
 
-// Health Potion
-function recoverEffect() {
-  const recover = k.add([
-    k.sprite("recover"),
+// Potions
+const POTIONS = [
+  { name: "health-potion", potionSprite: "recover", borderSprite: "starr-green-border",
+    onPick: () => {
+      if (!hasShield) changeHealth(+25);
+    }
+  },
+  { name: "speed-potion", potionSprite: "speedup", borderSprite: "starr-orange-border",
+    onPick: () => {
+      speed += 0.75;
+    }
+  },
+  { name: "blindness-potion", potionSprite: "blindness", borderSprite: "starr-purple-border",
+    onPick: () => {
+      // ADD EFFECTS
+    }
+  },
+  { name: "confusion-potion", potionSprite: "confusion", borderSprite: "starr-pink-border",
+    onPick: () => {
+      // ADD EFFECTS
+    }
+  },
+  { name: "unknown-potion", potionSprite: "unknown", borderSprite: "starr-black-border",
+    onPick: () => {
+      // ADD EFFECTS
+    }
+  },
+];
+
+function potionEffect(potionSprite, borderSprite) {
+  const effect = k.add([
+    k.sprite(potionSprite),
     k.pos(starr.pos),
     k.scale(3),
     k.opacity(1),
@@ -846,21 +995,21 @@ function recoverEffect() {
   
   // Fade out effect when anim ended
   let isFading = false;
-  recover.onUpdate(() => {
-    recover.pos = starr.pos;
+  effect.onUpdate(() => {
+    effect.pos = starr.pos;
     if (isFading) {
-      recover.opacity -= 1.5 * k.dt();
-      if (recover.opacity <= 0) recover.destroy();
+      effect.opacity -= 1.5 * k.dt();
+      if (effect.opacity <= 0) effect.destroy();
     }
   });
   
-  recover.play("recover");
-  recover.onAnimEnd(() => {
+  effect.play(potionSprite);
+  effect.onAnimEnd(() => {
     isFading = true;
     
-    // Green border effect
+    // Add a flash of border
     const border = k.add([
-      k.sprite("starr-green-border"),
+      k.sprite(borderSprite),
       k.pos(starr.pos),
       k.opacity(0.75),
       k.rotate(starr.angle),
@@ -879,71 +1028,18 @@ function recoverEffect() {
   
 }
 
-starr.onCollide("health-potion", (potion) => {
-  if (!isInGame) return;
+for (const potion of POTIONS) {
+  starr.onCollide(potion.name, (potionSprite) => {
+    if (!isInGame) return;
 
-  // Destroy potion, increase health (if don't have shield), play sfx
-  potion.destroy();
-  recoverEffect();
-  if (!hasShield) changeHealth(+25);
-  k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
-});
+    // Destroy potion, play vfx and sfx
+    potionSprite.destroy();
+    potionEffect(potion.potionSprite, potion.borderSprite);
+    k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
 
-// Speed Potion
-function speedupEffect() {
-  const speedup = k.add([
-    k.sprite("speedup"),
-    k.pos(starr.pos),
-    k.scale(3),
-    k.opacity(1),
-    k.anchor("center"),
-    k.z(100)
-  ]);
-  
-  // Fade out effect when anim ended
-  let isFading = false;
-  speedup.onUpdate(() => {
-    speedup.pos = starr.pos;
-    if (isFading) {
-      speedup.opacity -= 1.5 * k.dt();
-      if (speedup.opacity <= 0) speedup.destroy();
-    }
+    potion.onPick();
   });
-  
-  speedup.play("speedup");
-  speedup.onAnimEnd(() => {
-    isFading = true;
-    
-    // Orange border effect
-    const border = k.add([
-      k.sprite("starr-orange-border"),
-      k.pos(starr.pos),
-      k.opacity(0.75),
-      k.rotate(starr.angle),
-      k.anchor("center"),
-      k.z(starr.z - 1)
-    ]);
-    
-    border.onUpdate(() => {
-      border.pos = starr.pos;
-      border.angle = starr.angle;
-      border.opacity -= 1.5 * k.dt();
-      if (border.opacity <= 0) border.destroy();
-    });
-    
-  });
-  
 }
-
-starr.onCollide("speed-potion", (potion) => {
-  if (!isInGame) return;
-
-  // Destroy potion and increase speed
-  potion.destroy();
-  speedupEffect();
-  speed += 0.75;
-  k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
-});
 
 // ------------------------------
 // Meter Counter
@@ -1064,7 +1160,7 @@ const SHOP_ITEMS = [
     info: "Double all coins collected by two", bought: false,
     onBuy: () => {
       addBuffIcon("double");
-      doubleCoins = true;
+      isDoubleCoins = true;
     }
   },
 ];

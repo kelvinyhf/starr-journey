@@ -2,8 +2,10 @@
 > A casual web game about Starr dodging obstacles, built with KAPLAY
 Made by KelvinY.
 
-## Gameplay
-- **POINT**: DETAILS.
+## How to Play
+1. Drag your mouse or swipe your thumb to control Starr
+2. Dodge obstacles, collect coins, and try to go as far as you can
+3. That's it!
 
 ## Links
 - [Live Demo](https://starrjourney.pages.dev/)
