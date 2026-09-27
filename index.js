@@ -40,7 +40,11 @@ let speed = 1;
 let collectedCoins = 0;
 let collectedSilverCoins = 0;
 
-// Effects
+// Potion effects
+let isBlind = false;
+let isConfused = false;
+
+// Shop item effects
 let hasShield = false;
 let isStasis = false;
 let canDodge = false;
@@ -56,11 +60,11 @@ k.loadSprite("starr-purple-border", "./assets/sprites/starr/purple-border.png");
 k.loadSprite("starr-pink-border", "./assets/sprites/starr/pink-border.png");
 k.loadSprite("starr-black-border", "./assets/sprites/starr/black-border.png");
 
-// Rocks
-k.loadSprite("rock-sm", "./assets/sprites/rocks/rock-sm.png");
-k.loadSprite("rock-md", "./assets/sprites/rocks/rock-md.png");
-k.loadSprite("rock-lg", "./assets/sprites/rocks/rock-lg.png");
-k.loadSprite("rock-fs", "./assets/sprites/rocks/rock-fs.png");
+// Meteors
+k.loadSprite("meteor-sm", "./assets/sprites/meteors/meteor-sm.png");
+k.loadSprite("meteor-md", "./assets/sprites/meteors/meteor-md.png");
+k.loadSprite("meteor-lg", "./assets/sprites/meteors/meteor-lg.png");
+k.loadSprite("meteor-fs", "./assets/sprites/meteors/meteor-fs.png");
 
 // Coin
 k.loadSprite(
@@ -328,7 +332,8 @@ k.loadSound("Reformat", "./assets/sounds/Reformat.mp3");
 k.loadSound("shield-explode", "./assets/sounds/shield-explode.wav");
 k.loadSound("dodge", "./assets/sounds/dodge.wav");
 
-// Load Shader
+// Load Masks and Shaders
+// k.loadSprite("blindness-mask", "./assets/sprites/statics/blindness-mask.png");
 k.loadShader("flash", null, `
   vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
     float alpha = texture2D(tex, uv).a;
@@ -341,9 +346,9 @@ let startIndex = k.choose([0, 1, 2]);
 function playBGM(index) {
   const currentBGM = k.play(bgms[index], { volume: 0.5 });
   currentBGM.onEnd(() => {
-    setTimeout(() => {
+    k.wait(5, () => {
       playBGM(index === 2 ? 0 : ++index)
-    }, 5000);
+    });
   });
 }
 
@@ -370,8 +375,12 @@ function gameOver() {
   died = true;
 
   // Disable effects
+  isBlind = false;
+  isConfused = false;
+  hasShield = false;
   isStasis = false;
   canDodge = false;
+  isDoubleCoins = false;
 
   // Set best distance
   if (meters > bestDistance) {
@@ -390,7 +399,7 @@ function gameOver() {
   localStorage.setItem(SILVER_COINS, silverCoins);
   silverCoinLabel.innerText = silverCoins;
 
-  setTimeout(() => {
+  k.wait(1, () => {
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
     collectedCoinsLabel.innerHTML = `
@@ -407,7 +416,7 @@ function gameOver() {
       ${isDoubleCoins ? "(Doubled!)" : ""}
     `;
     bestDistanceLabel.innerHTML = `Best Distance <span class="text-xl text-red-10">${bestDistance}m</span>`;
-  }, 1000);
+  });
 
 }
 
@@ -482,7 +491,8 @@ starr.onUpdate(() => {
 
         // Make Starr follow mouse smoothly
         const mouseX = k.toWorld(k.mousePos()).x;
-        const targetX = k.clamp(mouseX, MIN_X, MAX_X);
+        const actualX = isConfused ? k.width() - mouseX : mouseX; // Effect of "confusion potion"
+        const targetX = k.clamp(actualX, MIN_X, MAX_X);
         starr.pos.x = k.lerp(starr.pos.x, targetX, 0.15);
 
       } else {
@@ -498,6 +508,7 @@ starr.onUpdate(() => {
       let dir = 0;
       if (moveLeft) dir -= 1;
       if (moveRight) dir += 1;
+      if (isConfused) dir *= -1;  // Effect of "confusion potion"
 
       // Make Starr moves
       starr.pos.x += dir * keyboardSpeed * k.dt();
@@ -509,10 +520,10 @@ starr.onUpdate(() => {
     if (!invincibleOnStart) {
       invincibleOnStart = true;
       isInvincible = true;
-      setTimeout(() => {
+      k.wait(1, () => {
         isInvincible = false
         starr.opacity = 1;
-      }, 1000);
+      });
     }
 
   }
@@ -621,26 +632,26 @@ k.loop(0.5, () => {
 // Items
 // ------------------------------
 const MENU_ITEMS = [
-  { name: "rock-sm", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
-  { name: "rock-md", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
-  { name: "rock-lg", type: "rock", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 }
+  { name: "meteor-sm", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
+  { name: "meteor-md", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
+  { name: "meteor-lg", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 }
 ];
 
 let GAME_ITEMS = [
 
-  // Basic Items (Coin and Rocks)
+  // Basic Items (Coin and Meteors)
   { name: "coin", type: "coin", weight: 1, anim: { anim: "idle" }, category: "positive" },
   { name: "silver-coin", type: "silver-coin", weight: 2, anim: { anim: "idle" }, category: "positive" },
-  { name: "rock-sm", type: "rock", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
-  { name: "rock-md", type: "rock", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
-  { name: "rock-lg", type: "rock", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
-  { name: "rock-fs", type: "rock", weight: 0.35, scale: [0.1, 0.3], hitbox: 0.15, speed: [750, 1000], category: "negative" },
+  { name: "meteor-sm", type: "meteor", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "meteor-md", type: "meteor", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "meteor-lg", type: "meteor", weight: 2.5, scale: [0.1, 0.3], hitbox: 0.25, category: "negative" },
+  { name: "meteor-fs", type: "meteor", weight: 0.35, scale: [0.1, 0.3], hitbox: 0.15, speed: [750, 1000], category: "negative" },
 
   // Pickups
   { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
   { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25], category: "positive" },
   { name: "blindness-potion", type: "blindness-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
-  { name: "confusion-potion", type: "confusion-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
+  // { name: "confusion-potion", type: "confusion-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
   { name: "unknown-potion", type: "unknown-potion", weight: 0.01, scale: [1, 1.25], category: "negative" },
   { name: "coin-bag", type: "coin-bag", weight: 0.1, scale: [1, 1.25], category: "positive" },
 
@@ -696,7 +707,7 @@ k.loop(0.1, () => {
       
       // Effect of the shop item "stasis"
       item.pos.y += randomSpeed * k.dt() * (
-        itemConfig.type === "rock" &&
+        itemConfig.type === "meteor" &&
         isStasis &&
         item.pos.x >= starr.pos.x - 150 &&
         item.pos.x <= starr.pos.x + 150 &&
@@ -839,9 +850,9 @@ starr.onCollide("coin-bag", (bag) => {
 
 });
 
-// Rocks
+// Meteors
 const healthBar = document.getElementById("health-bar");
-function changeHealth(num, rockPos) {
+function changeHealth(num, meteorPos) {
   health += num;
   if (health > 100) {
     health = 100;
@@ -853,26 +864,26 @@ function changeHealth(num, rockPos) {
   healthBar.src = `./assets/sprites/health-bar/${health}.png`;
   
   // Destroy Starr when health < 0
-  if (rockPos) {
+  if (meteorPos) {
     if (health <= 0) {
       health = 0;
       gameOver();
-      explode(rockPos, true);
+      explode(meteorPos, true);
       k.play("explosion2", { volume: 1 });
     } else {
-      explode(rockPos)
+      explode(meteorPos)
       k.play("explosion1", { volume: 0.8 });
     }
   }
 
 }
 
-function explode(rockPos, fatal = false) {
+function explode(meteorPos, fatal = false) {
   const type = fatal ? "explosion-lg" : k.choose(["explosion-sm", "explosion-md"]);
   const shakeIntensity = fatal ? 20 : 10;
   const explosion = k.add([
     k.sprite(type),
-    k.pos(rockPos),
+    k.pos(meteorPos),
     k.scale(fatal ? 5 : 3),
     k.anchor("center"),
     k.z(100)
@@ -887,18 +898,18 @@ function explode(rockPos, fatal = false) {
   
   // Damage effect (flash) 
   starr.shader = "flash";
-  setTimeout(() => starr.shader = null, 100);
+  k.wait(0.1, () => starr.shader = null);
   
 }
 
-starr.onCollide("rock", (rock) => {
+starr.onCollide("meteor", (meteor) => {
   if (isInvincible || !isInGame) return;
 
   if (canDodge && k.chance(0.35)) {
     isInvincible = true;
 
     // Effect of the shop item "dodge"
-    rock.onUpdate(() => rock.opacity -= 3 * k.dt());
+    meteor.onUpdate(() => meteor.opacity -= 3 * k.dt());
     k.play("dodge", { volume: 0.8 });
 
     // Starr flicks
@@ -908,16 +919,16 @@ starr.onCollide("rock", (rock) => {
     });
 
     // Invincible for 1 second
-    setTimeout(() => {
+    k.wait(1, () => {
       isInvincible = false;
       starr.opacity = 1;
-    }, 1000);
+    });
 
   } else if (hasShield) {
     
     // Effect of the shop item "shield"
     hasShield = false;
-    rock.destroy();
+    meteor.destroy();
     
     // Destroy shield, set health bar, and explosion effect
     const shield = k.get("shield")[0];
@@ -944,15 +955,15 @@ starr.onCollide("rock", (rock) => {
   } else {
     isInvincible = true;
 
-    // Destroy rock and reduce health
-    rock.destroy();
-    changeHealth(-25, rock.pos);
+    // Destroy meteor and reduce health
+    meteor.destroy();
+    changeHealth(-25, meteor.pos);
 
     // Invincible for 1.5 second
-    setTimeout(() => {
+    k.wait(1.5, () => {
       isInvincible = false;
       starr.opacity = 1;
-    }, 1500);
+    });
 
   }
 });
@@ -971,17 +982,46 @@ const POTIONS = [
   },
   { name: "blindness-potion", potionSprite: "blindness", borderSprite: "starr-purple-border",
     onPick: () => {
-      // ADD EFFECTS
+      if (isBlind) return;
+      isBlind = true;
+
+      // Add blindness mask
+      const blindnessMask = k.add([
+        k.sprite("blindness-mask"),
+        k.anchor("center"),
+        k.scale(3),
+        k.pos(starr.pos),
+        k.opacity(0),
+        k.z(9999),
+      ]);
+      
+      // Fade in and make it follow Starr
+      k.tween(0, 1, 0.5, (v) => blindnessMask.opacity = v);
+      blindnessMask.onUpdate(() => {
+        if (!isBlind || died) blindnessMask.destroy();
+        blindnessMask.pos = starr.pos;
+      });
+
+      // Fade out and destroy mask after 10 seconds
+      k.wait(10, () => {
+        if (isBlind) isBlind = false;
+        k.tween(1, 0, 0.5, (v) => blindnessMask.opacity = v).then(() => blindnessMask.destroy());
+      });
+
     }
   },
   { name: "confusion-potion", potionSprite: "confusion", borderSprite: "starr-pink-border",
     onPick: () => {
-      // ADD EFFECTS
+      if (isConfused) return;
+      isConfused = true;
+      k.wait(10, () => {
+        if (isConfused) isConfused = false;
+      });
     }
   },
   { name: "unknown-potion", potionSprite: "unknown", borderSprite: "starr-black-border",
     onPick: () => {
-      // ADD EFFECTS
+      // COMING SOON...
     }
   },
 ];
