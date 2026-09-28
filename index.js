@@ -310,6 +310,9 @@ k.loadSprite("explosion-lg", "./assets/sprites/explosions/explosion-lg.png", {
 });
 
 // Statics
+k.loadSprite("blindness-mask", "./assets/sprites/statics/blindness-mask.png");
+k.loadSprite("confused-effect", "./assets/sprites/statics/confused-effect.png");
+
 k.loadSprite("shield", "./assets/sprites/statics/shield-effect.png");
 k.loadSprite("shield-explosion", "./assets/sprites/statics/shield-explosion.png");
 k.loadSprite("stasis", "./assets/sprites/statics/stasis-effect.png");
@@ -332,8 +335,7 @@ k.loadSound("Reformat", "./assets/sounds/Reformat.mp3");
 k.loadSound("shield-explode", "./assets/sounds/shield-explode.wav");
 k.loadSound("dodge", "./assets/sounds/dodge.wav");
 
-// Load Masks and Shaders
-// k.loadSprite("blindness-mask", "./assets/sprites/statics/blindness-mask.png");
+// Load Shaders
 k.loadShader("flash", null, `
   vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
     float alpha = texture2D(tex, uv).a;
@@ -651,7 +653,7 @@ let GAME_ITEMS = [
   { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
   { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25], category: "positive" },
   { name: "blindness-potion", type: "blindness-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
-  // { name: "confusion-potion", type: "confusion-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
+  { name: "confusion-potion", type: "confusion-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
   { name: "unknown-potion", type: "unknown-potion", weight: 0.01, scale: [1, 1.25], category: "negative" },
   { name: "coin-bag", type: "coin-bag", weight: 0.1, scale: [1, 1.25], category: "positive" },
 
@@ -996,16 +998,16 @@ const POTIONS = [
       ]);
       
       // Fade in and make it follow Starr
-      k.tween(0, 1, 0.5, (v) => blindnessMask.opacity = v);
+      k.tween(0, 0.9, 0.5, (v) => blindnessMask.opacity = v);
       blindnessMask.onUpdate(() => {
-        if (!isBlind || died) blindnessMask.destroy();
+        if (died) blindnessMask.destroy();
         blindnessMask.pos = starr.pos;
       });
 
       // Fade out and destroy mask after 10 seconds
       k.wait(10, () => {
         if (isBlind) isBlind = false;
-        k.tween(1, 0, 0.5, (v) => blindnessMask.opacity = v).then(() => blindnessMask.destroy());
+        k.tween(blindnessMask.opacity, 0, 0.5, (v) => blindnessMask.opacity = v).then(() => blindnessMask.destroy());
       });
 
     }
@@ -1014,9 +1016,46 @@ const POTIONS = [
     onPick: () => {
       if (isConfused) return;
       isConfused = true;
+      
+      // Invincible for 0.5 second
+      isInvincible = true;
+      k.wait(0.5, () => {
+        isInvincible = false
+        starr.opacity = 1;
+      });
+      
+      // Add confused effect
+      const confusedEffect = k.add([
+        k.sprite("confused-effect"),
+        k.anchor("center"),
+        k.pos(starr.pos),
+        k.scale(1.5),
+        k.rotate(0),
+        k.opacity(0.1),
+        k.z(starr.z - 1)
+      ]);
+      
+      // Make it follow Starr, spin and scale
+      confusedEffect.onUpdate(() => {
+        if (died) confusedEffect.destroy();
+        confusedEffect.pos = starr.pos;
+        confusedEffect.angle -= 180 * k.dt();
+        confusedEffect.scale = k.vec2(1.5 + Math.sin(k.time() * 5) * 0.2);
+      });
+      
       k.wait(10, () => {
         if (isConfused) isConfused = false;
+        confusedEffect.destroy();
+        
+        // Invincible for 0.5 second
+        isInvincible = true;
+        k.wait(0.5, () => {
+          isInvincible = false
+          starr.opacity = 1;
+        });
+        
       });
+      
     }
   },
   { name: "unknown-potion", potionSprite: "unknown", borderSprite: "starr-black-border",
@@ -1253,7 +1292,7 @@ function renderShopItems() {
   todayItems.forEach((item) => {
     const itemElement = document.createElement("button");
     itemElement.id = item.id;
-    itemElement.className = "flex flex-col justify-center items-center px-4 py-3 cursor-pointer";
+    itemElement.className = "relative flex flex-col justify-center items-center px-4 py-3 cursor-pointer";
     itemElement.innerHTML = `
       <img src="./assets/sprites/statics/${item.icon}" class="w-12 h-12">
       <span class="block text-lg [-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]">${item.name}</span>
@@ -1355,17 +1394,62 @@ function buyItem(btn, item) {
     // Buy the item and reduce coins
     changeCoins(-item.price, null, isGold);
     item.bought = true;
-    btn.classList.add("opacity-50");
+    [...btn.children].forEach((child) => child.classList.add("opacity-50"));
     item.onBuy();
 
-    // Play sfx, vfx, and show success prompt
+    // Play sfx
     k.play(item.currency === "silver-coin" ? "coin1" : "coin2", { volume: 0.5 });
-    // ADD VFX
+    
+    // Coin bounce up anim
+    const bounceCoin = document.createElement("img");
+    const currency =  isGold ? "coin" : "silver-coin";
+    const frames = [
+      `./assets/sprites/${currency}/frame1.png`,
+      `./assets/sprites/${currency}/frame2.png`,
+      `./assets/sprites/${currency}/frame3.png`,
+      `./assets/sprites/${currency}/frame4.png`,
+      `./assets/sprites/${currency}/frame5.png`,
+      `./assets/sprites/${currency}/frame6.png`,
+      `./assets/sprites/${currency}/frame7.png`,
+      `./assets/sprites/${currency}/frame8.png`,
+    ];
+    
+    bounceCoin.src = frames[0];
+    bounceCoin.className = "absolute left-1/2 top-1/2 -translate-x-1/2 translate-y-1 pointer-events-none w-8 h-8";
+    btn.appendChild(bounceCoin);
+    bounceCoin.animate(
+      [
+        { transform: 'translateY(0)', opacity: 1, offset: 0 },,
+        { transform: 'translateY(-50%)', opacity: 1, offset: 0.25 },
+        { transform: 'translateY(-125%)', opacity: 1, offset: 0.5 },
+        { transform: 'translateY(-75%)', opacity: 1, offset: 0.75 },
+        { transform: 'translateY(0)', opacity: 0, offset: 1 }
+      ],
+      {
+        duration: 500,
+        easing: 'ease-out',
+        fill: 'forwards'
+      }
+    );
+    
+    let currentFrame = 0;
+    const switchFrameLoop = k.loop(0.06, () => {
+      if (currentFrame >= 7) return;
+      currentFrame++;
+      bounceCoin.src = frames[currentFrame];
+    });
+    
+    k.wait(0.5, () => {
+      switchFrameLoop.cancel();
+      bounceCoin.remove();
+    });
+    
+    // Show success prompt
     shopItemInfoLabel.innerHTML = k.choose(["Purchase successful!", "Item acquired!", "A fine choice!"]);
 
   } else {
 
-    // Play sfx, vfn, and show fail prompt
+    // Play sfx, vfx, and show fail prompt
     k.play("failed", { volume: 0.5 });
     btn.animate(
       [
