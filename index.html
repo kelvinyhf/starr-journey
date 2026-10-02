@@ -179,16 +179,19 @@
   <div id="game-ui" class="pt-[env(safe-area-inset-top)] max-w-xl mx-auto hidden absolute inset-0 w-full h-full pointer-events-none flex flex-col justify-between items-center">
     
     <!-- Top Bar -->
-    <div class="flex justify-between items-center w-full p-6">
+    <div class="flex flex-col items-center gap-8 w-full p-6">
       
-      <!-- Health Bar -->
-      <img id="health-bar" src="./assets/sprites/health-bar/100.png" class="w-40">
+      <!-- Status Bar -->
+      <div class="flex justify-between items-center w-full">
+        <img id="health-bar" src="./assets/sprites/health-bar/100.png" class="w-40">
+        <span id="meter-counter" class="block text-2xl mr-4 [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0m</span>
+      </div>
       
-      <!-- Meter Counter -->
-      <span id="meter-counter" class="block text-2xl mr-4 [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">0m</span>
-      
+      <!-- Planet Display -->
+      <span id="planet-display" class="block text-2xl text-center"></span>
+
     </div>
-    
+
     <!-- Death Screen UI -->
     <div id="death-screen-ui" class="hidden flex-1 flex justify-center items-center w-full">
       <div class="flex flex-col items-center text-center gap-2 bg-[rgba(0,0,0,0.75)] pixel-frame p-8 m-4">

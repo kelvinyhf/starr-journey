@@ -39,6 +39,7 @@ let meters = 0;
 let speed = 1;
 let collectedCoins = 0;
 let collectedSilverCoins = 0;
+let currentPlanetIndex = null;
 
 // Potion effects
 let isBlind = false;
@@ -317,6 +318,16 @@ k.loadSprite("shield", "./assets/sprites/statics/shield-effect.png");
 k.loadSprite("shield-explosion", "./assets/sprites/statics/shield-explosion.png");
 k.loadSprite("stasis", "./assets/sprites/statics/stasis-effect.png");
 
+// Planets
+k.loadSprite("earth", "./assets/sprites/planets/earth.png");
+k.loadSprite("venus", "./assets/sprites/planets/venus.png");
+k.loadSprite("mars", "./assets/sprites/planets/mars.png");
+k.loadSprite("mercury", "./assets/sprites/planets/mercury.png");
+k.loadSprite("jupiter", "./assets/sprites/planets/jupiter.png");
+k.loadSprite("saturn", "./assets/sprites/planets/saturn.png");
+k.loadSprite("uranus", "./assets/sprites/planets/uranus.png");
+k.loadSprite("neptune", "./assets/sprites/planets/neptune.png");
+
 // ------------------------------
 // Load sounds
 // ------------------------------
@@ -327,6 +338,8 @@ k.loadSound("explosion2", "./assets/sounds/explosion2.wav");
 k.loadSound("buff1", "./assets/sounds/buff1.wav");
 k.loadSound("buff2", "./assets/sounds/buff2.wav");
 k.loadSound("buff3", "./assets/sounds/buff3.wav");
+k.loadSound("event1", "./assets/sounds/event1.wav");
+k.loadSound("event2", "./assets/sounds/event2.wav");
 k.loadSound("failed", "./assets/sounds/failed.wav");
 k.loadSound("gameover", "./assets/sounds/gameover.wav");
 k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
@@ -1138,7 +1151,108 @@ k.onUpdate(() => {
   if (!isInGame || died) return;
   meters += speed * k.dt();
   meterCounter.innerText = meters.toFixed(1) + "m";
+  updatePlanets();
 });
+
+// ------------------------------
+// Planets
+// ------------------------------
+const planetDisplay = document.getElementById("planet-display");
+const PLANETS = [
+  { name: "Earth", startM: k.randi(10, 20), endM: k.randi(30, 40),
+    onEnter: () => {
+      // Earth has no buffs or debuffs
+    }
+  },
+  { name: "Venus", startM: k.randi(50, 60), endM: k.randi(70, 80),
+    onEnter: () => {
+      // Add more meteors and meteor-fs + hot filter + pale yellow tint
+    }
+  },
+  { name: "Mars", startM: k.randi(90, 100), endM: k.randi(110, 120),
+    onEnter: () => {
+      // Lower sensitivity + pale red tint
+    }
+  },
+  { name: "Mercury", startM: k.randi(130, 140), endM: k.randi(150, 160),
+    onEnter: () => {
+      // Much faster speed
+    }
+  },
+  { name: "Jupiter", startM: k.randi(170, 180), endM: k.randi(190, 200),
+    onEnter: () => {
+      // Much more meteors
+    }
+  },
+  { name: "Saturn", startM: k.randi(210, 220), endM: k.randi(230, 240),
+    onEnter: () => {
+      
+    }
+  },
+  { name: "Uranus", startM: k.randi(250, 260), endM: k.randi(270, 280),
+    onEnter: () => {
+      
+    }
+  },
+  { name: "Neptune", startM: k.randi(290, 300), endM: k.randi(310, 320),
+    onEnter: () => {
+      
+    }
+  }
+];
+
+function typeWriterEffect(el, text) {
+  const typeWriter = k.loop(0.05, () => {
+    if (el.innerText !== text) {
+      el.innerText = text.substring(0, el.innerText.length + 1);
+    } else {
+      typeWriter.cancel();
+    }
+  });
+}
+
+function updatePlanets() {
+  const foundIndex = PLANETS.findIndex((p) => meters >= p.startM && meters <= p.endM);
+  const newIndex = foundIndex !== -1 ? foundIndex : null;
+
+  // When entered a new planet
+  if (newIndex !== currentPlanetIndex) {
+    currentPlanetIndex = newIndex;
+
+    // If current planet is present, set its buffs and debuffs
+    if (currentPlanetIndex !== null) {
+      PLANETS[currentPlanetIndex].onEnter();
+
+      // Show planet's name for 5 seconds
+      const currentPlanetName = PLANETS[currentPlanetIndex].name;
+      typeWriterEffect(planetDisplay, currentPlanetName);
+      k.wait(3, () => {
+        if (planetDisplay.innerText === currentPlanetName) planetDisplay.innerText = "";
+      });
+      
+      // Play sfx and spawn the planet
+      k.play(k.choose(["event1", "event2"]), { volume: 0.75 });
+
+      const planet = k.add([
+        k.sprite(PLANETS[currentPlanetIndex].name.toLowerCase()),
+        k.pos(k.choose([MIN_X + 125, MAX_X - 125]), -500),
+        k.scale(k.rand(0.25, 0.5)),
+        k.rotate(k.rand(-20, 5)),
+        k.opacity(0.5),
+        k.anchor("center"),
+        k.z(-1),
+      ]);
+
+      planet.onUpdate(() => {
+        planet.pos.y += 50 * k.dt();
+        planet.angle += 2 * k.dt();
+        if (planet.pos.y > k.height() + 500) planet.destroy();
+      });
+
+    }
+
+  }
+}
 
 // ------------------------------
 // Overlay and Modals
