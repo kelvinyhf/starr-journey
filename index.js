@@ -9,6 +9,14 @@ const k = kaplay({
   global: false
 });
 
+// Background color filter
+const bg = k.add([
+  k.rect(k.width(), k.height()),
+  k.color(0, 0, 0),
+  k.opacity(0),
+  k.z(-99)
+]);
+
 // Make images not draggable
 document.addEventListener('dragstart', (e) => e.preventDefault());
 
@@ -324,15 +332,41 @@ k.loadSprite("venus", "./assets/sprites/planets/venus.png");
 k.loadSprite("mars", "./assets/sprites/planets/mars.png");
 k.loadSprite("mercury", "./assets/sprites/planets/mercury.png");
 k.loadSprite("jupiter", "./assets/sprites/planets/jupiter.png");
-k.loadSprite("saturn", "./assets/sprites/planets/saturn.png");
 k.loadSprite("uranus", "./assets/sprites/planets/uranus.png");
 k.loadSprite("neptune", "./assets/sprites/planets/neptune.png");
+
+// Water and Flame
+k.loadSprite("water", "./assets/sprites/pickups/water.png");
+k.loadSprite(
+  "flame",
+  [
+    "./assets/sprites/flame/frame1.png",
+    "./assets/sprites/flame/frame2.png",
+    "./assets/sprites/flame/frame3.png",
+    "./assets/sprites/flame/frame4.png",
+    "./assets/sprites/flame/frame5.png",
+    "./assets/sprites/flame/frame6.png",
+    "./assets/sprites/flame/frame7.png",
+    "./assets/sprites/flame/frame8.png"
+  ],
+  {
+    anims: {
+      burn: {
+        from: 0,
+        to: 7,
+        speed: 25,
+        loop: true
+      }
+    }
+  }
+);
 
 // ------------------------------
 // Load sounds
 // ------------------------------
 k.loadSound("coin1", "./assets/sounds/coin1.wav");
 k.loadSound("coin2", "./assets/sounds/coin2.wav");
+k.loadSound("coinBag", "./assets/sounds/coin-bag.wav");
 k.loadSound("explosion1", "./assets/sounds/explosion1.wav");
 k.loadSound("explosion2", "./assets/sounds/explosion2.wav");
 k.loadSound("buff1", "./assets/sounds/buff1.wav");
@@ -362,7 +396,7 @@ function playBGM(index) {
   const currentBGM = k.play(bgms[index], { volume: 0.5 });
   currentBGM.onEnd(() => {
     k.wait(5, () => {
-      playBGM(index === 2 ? 0 : ++index)
+      playBGM(index === 2 ? 0 : ++index);
     });
   });
 }
@@ -491,6 +525,11 @@ const starr = k.add([
 ]);
 starr.shader = null;
 
+let mouseSensitivity = 0.15;
+let keyboardSensitivity = 600;
+let starrFloatVelocity = 3;
+let starrFloatAmplitude = 25;
+let starrSpinSpeed = 180;
 let trailTimer = 0;
 starr.onUpdate(() => {
 
@@ -508,16 +547,15 @@ starr.onUpdate(() => {
         const mouseX = k.toWorld(k.mousePos()).x;
         const actualX = isConfused ? k.width() - mouseX : mouseX; // Effect of "confusion potion"
         const targetX = k.clamp(actualX, MIN_X, MAX_X);
-        starr.pos.x = k.lerp(starr.pos.x, targetX, 0.15);
+        starr.pos.x = k.lerp(starr.pos.x, targetX, mouseSensitivity);
 
       } else {
-        starr.pos.x = k.lerp(starr.pos.x, baseX, 0.15);
+        starr.pos.x = k.lerp(starr.pos.x, baseX, mouseSensitivity);
       }
     } else {
 
       const moveLeft = keysPressed["a"] || keysPressed["arrowleft"];
       const moveRight = keysPressed["d"] || keysPressed["arrowright"];
-      const keyboardSpeed = 500;
 
       // Get direction
       let dir = 0;
@@ -526,7 +564,7 @@ starr.onUpdate(() => {
       if (isConfused) dir *= -1;  // Effect of "confusion potion"
 
       // Make Starr moves
-      starr.pos.x += dir * keyboardSpeed * k.dt();
+      starr.pos.x += dir * keyboardSensitivity * k.dt();
       starr.pos.x = k.clamp(starr.pos.x, MIN_X, MAX_X);
 
     }
@@ -544,8 +582,8 @@ starr.onUpdate(() => {
   }
 
   // Make it float and spins
-  starr.pos.y = baseY + Math.sin(k.time() * 3) * 25;
-  starr.angle += 180 * getDifficulty() * k.dt();
+  starr.pos.y = baseY + Math.sin(k.time() * starrFloatVelocity) * starrFloatAmplitude;
+  starr.angle += starrSpinSpeed * getDifficulty() * k.dt();
 
   // Flash effect when invincible
   if (isInvincible) starr.opacity = k.map(Math.sin(k.time() * 20), -1, 1, 0.25, 1);
@@ -663,17 +701,26 @@ let GAME_ITEMS = [
   { name: "meteor-fs", type: "meteor", weight: 0.35, scale: [0.1, 0.3], hitbox: 0.15, speed: [750, 1000], category: "negative" },
 
   // Pickups
-  { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
-  { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25], category: "positive" },
-  { name: "blindness-potion", type: "blindness-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
-  { name: "confusion-potion", type: "confusion-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
-  { name: "unknown-potion", type: "unknown-potion", weight: 0.01, scale: [1, 1.25], category: "negative" },
-  { name: "coin-bag", type: "coin-bag", weight: 0.1, scale: [1, 1.25], category: "positive" },
-
+  { name: "health-potion", type: "health-potion", weight: 0.2, scale: [1, 1.25], category: "positive", isPickup: true },
+  { name: "speed-potion", type: "speed-potion", weight: 0.4, scale: [1, 1.25], category: "positive", isPickup: true },
+  { name: "blindness-potion", type: "blindness-potion", weight: 0.2, scale: [1, 1.25], category: "negative", isPickup: true },
+  { name: "confusion-potion", type: "confusion-potion", weight: 0.2, scale: [1, 1.25], category: "negative", isPickup: true },
+  { name: "unknown-potion", type: "unknown-potion", weight: 0.05, scale: [1, 1.25], category: "negative", isPickup: true },
+  { name: "coin-bag", type: "coin-bag", weight: 0.2, scale: [1, 1.25], category: "positive", isPickup: true },
+  
+  // Special Pickup
+  { name: "water", type: "water", weight: 0.3, scale: [1, 1.25], category: "positive", available: false },
+  
 ];
 
+let lastPickupSpawnTime = 0;
 function getRandomItem(config) {
-  const availableItems = config;
+  const currentTime = k.time();
+  const availableItems = config.filter((item) => {
+    if (item.available === false) return false;
+    if (item.isPickup && (currentTime - lastPickupSpawnTime < 10)) return false;
+    return true;
+  });
   
   const totalWeight = availableItems.reduce((sum, item) => sum + item.weight, 0);
   let randomNum = k.rand(0, totalWeight);
@@ -695,7 +742,11 @@ k.loop(0.1, () => {
     itemTimer = 0;
 
     const itemConfig = getRandomItem(isInGame ? GAME_ITEMS : MENU_ITEMS);
-
+    
+    // Return if no item available, update pickup spawn time if it is pickup
+    if (!itemConfig) return;
+    if (itemConfig.isPickup) lastPickupSpawnTime = k.time();
+    
     const [minScale, maxScale] = itemConfig.scale || [0.75, 1];
     const randomScale = k.rand(minScale, maxScale);
 
@@ -853,7 +904,7 @@ starr.onCollide("coin-bag", (bag) => {
 
   // Destroy bag and play sfx
   bag.destroy();
-  k.play("coin1", { volume: 0.4 }).onEnd(() => k.play("coin2", { volume: 0.4 }));
+  k.play("coinBag", { volume: 0.4 });
 
   // Add 8-24 gold coins
   const randomGoldCoins =  k.randi(2, 6);
@@ -878,10 +929,9 @@ function changeHealth(num, meteorPos) {
   // Set health bar
   healthBar.src = `./assets/sprites/health-bar/${health}.png`;
   
-  // Destroy Starr when health < 0
+  // Destroy Starr when health <= 0
   if (meteorPos) {
     if (health <= 0) {
-      health = 0;
       gameOver();
       explode(meteorPos, true);
       k.play("explosion2", { volume: 1 });
@@ -1159,43 +1209,157 @@ k.onUpdate(() => {
 // ------------------------------
 const planetDisplay = document.getElementById("planet-display");
 const PLANETS = [
-  { name: "Earth", startM: k.randi(10, 20), endM: k.randi(30, 40),
-    onEnter: () => {
-      // Earth has no buffs or debuffs
-    }
+  { name: "Earth", startM: 55, endM: 75,
+    onEnter: () => {},
+    onLeave: () => {}
   },
-  { name: "Venus", startM: k.randi(50, 60), endM: k.randi(70, 80),
+  { name: "Venus", startM: 15, endM: 35,
     onEnter: () => {
-      // Add more meteors and meteor-fs + hot filter + pale yellow tint
+      bg.color = k.rgb(255, 255, 0);
+      
+      // Add temperature meter and flame
+      let temperature = 0;
+      const flame = k.add([
+        k.sprite("flame", { anim: "burn" }),
+        k.pos(starr.pos),
+        k.scale(3),
+        k.opacity(0),
+        k.anchor("center"),
+        k.z(starr.z - 1)
+      ]);
+      flame.onUpdate(() => flame.pos = starr.pos);
+      flame.play("burn");
+      
+      // Increase temperature as time past
+      const tempLoop = k.loop(10, () => {
+        if (temperature < 100) {
+          temperature += 25;
+          flame.opacity = temperature / 100;
+          
+          // Instantly kill starr when overheated
+          if (temperature >= 100) changeHealth(-999, starr.pos);
+          
+        }
+      });
+      
+      // Set water available and collide event
+      for (const item of GAME_ITEMS) if (item.type === "water") item.available = true;
+      const waterCollision = starr.onCollide("water", (water) => {
+        if (!isInGame) return;
+        
+        // Destroy water, play vfx and sfx
+        water.destroy();
+        // ADD VFX
+        k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
+        
+        // Lower temperature 
+        temperature -= 25;
+        flame.opacity = temperature / 100;
+        
+      });
+      
+      // Destroy flame on death
+      flame.onUpdate(() => {
+        if (health <= 0) flame.destroy();
+      });
+      
+    },
+    onLeave: () => {
+      /* temperature = 0;
+      flame.destroy();
+      tempLoop.cancel();
+      waterCollision.cancel();
+      for (const item of GAME_ITEMS) if (item.type === "water") item.available = false; */
     }
   },
   { name: "Mars", startM: k.randi(90, 100), endM: k.randi(110, 120),
     onEnter: () => {
-      // Lower sensitivity + pale red tint
+      bg.color = k.rgb(255, 0, 0);
+      
+      // Appearance of explosive meteor
+      k.loop(2, () => {
+        if (k.chance(0.75)) return;
+        
+        // Spawn meteor
+        const meteorEx = k.add([
+          k.sprite("meteor-lg"),
+          k.pos(k.rand(MIN_X, MAX_X), -500),
+          k.scale(k.rand(0.1, 0.3)),
+          k.rotate(k.rand(0, 360)),
+          k.anchor("center"),
+          k.area({ scale: 0.25 }),
+          k.z(10),
+          "meteor"
+        ]);
+        
+        const randomSpeed = k.rand(750, 1000);
+        const spinSpeed = k.rand(-120, 120);
+        
+        // Drop and spin
+        meteorEx.onUpdate(() => {
+          meteorEx.pos.y += randomSpeed * k.dt();
+          meteorEx.angle += spinSpeed * k.dt();
+          if (meteorEx.pos.y > k.height() + 500) meteorEx.destroy();
+        });
+        
+      });
+      
+    },
+    onLeave: () => {
+      
     }
   },
   { name: "Mercury", startM: k.randi(130, 140), endM: k.randi(150, 160),
     onEnter: () => {
-      // Much faster speed
+      bg.color = k.rgb(211, 211, 211);
+      
+      // Lower gravity (sensitivity)
+      mouseSensitivity = 0.1;
+      keyboardSensitivity = 400;
+      starrFloatVelocity = 1.5;
+      starrFloatAmplitude = 50;
+      starrSpinSpeed = 90;
+      
+    },
+    onLeave: () => {
+      
     }
   },
   { name: "Jupiter", startM: k.randi(170, 180), endM: k.randi(190, 200),
     onEnter: () => {
-      // Much more meteors
-    }
-  },
-  { name: "Saturn", startM: k.randi(210, 220), endM: k.randi(230, 240),
-    onEnter: () => {
+      bg.color = k.rgb(165, 42, 42);
+      
+      // More meteors
+      for (const item of GAME_ITEMS) {
+        if (item.type === "meteor") item.weight *= 1.5;
+      }
+      
+    },
+    onLeave: () => {
       
     }
   },
   { name: "Uranus", startM: k.randi(250, 260), endM: k.randi(270, 280),
     onEnter: () => {
+      bg.color = k.rgb(173, 216, 230);
+      
+      // Strong wind
+      // ...
+      
+    },
+    onLeave: () => {
       
     }
   },
   { name: "Neptune", startM: k.randi(290, 300), endM: k.randi(310, 320),
     onEnter: () => {
+      bg.color = k.rgb(0, 0, 255);
+      
+      // Water bubbles
+      // ...
+      
+    },
+    onLeave: () => {
       
     }
   }
@@ -1218,9 +1382,16 @@ function updatePlanets() {
   // When entered a new planet
   if (newIndex !== currentPlanetIndex) {
     currentPlanetIndex = newIndex;
-
+    
+    // Trigger onLeave for last planet
+    if (currentPlanetIndex !== null) {
+      bg.opacity = 0;
+      PLANETS[currentPlanetIndex].onLeave();
+    }
+    
     // If current planet is present, set its buffs and debuffs
     if (currentPlanetIndex !== null) {
+      bg.opacity = 0.025;
       PLANETS[currentPlanetIndex].onEnter();
 
       // Show planet's name for 5 seconds
