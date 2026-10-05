@@ -733,10 +733,11 @@ function getRandomItem(config) {
 }
 
 let itemTimer = 0;
+let isInJupiter = false;
 k.loop(0.1, () => {
   itemTimer += 0.1;
   const baseInterval = isInGame ? 0.3 : 0.75;
-  const targetInterval = baseInterval / getDifficulty();
+  const targetInterval = baseInterval / getDifficulty() / (isInJupiter ? 1.5 : 1);
 
   if (itemTimer >= targetInterval) {
     itemTimer = 0;
@@ -1209,13 +1210,13 @@ k.onUpdate(() => {
 // ------------------------------
 const planetDisplay = document.getElementById("planet-display");
 const PLANETS = [
-  { name: "Earth", startM: 55, endM: 75,
-    onEnter: () => {},
-    onLeave: () => {}
-  },
-  { name: "Venus", startM: 15, endM: 35,
+  { name: "Earth", startM: 25, endM: 75, color: null,
     onEnter: () => {
-      bg.color = k.rgb(255, 255, 0);
+      return () => {};
+    }
+  },
+  { name: "Venus", startM: 100, endM: 200, color: k.rgb(255, 255, 0),
+    onEnter: () => {
       
       // Add temperature meter and flame
       let temperature = 0;
@@ -1232,6 +1233,7 @@ const PLANETS = [
       
       // Increase temperature as time past
       const tempLoop = k.loop(10, () => {
+        if (!isInGame || died) return;
         if (temperature < 100) {
           temperature += 25;
           flame.opacity = temperature / 100;
@@ -1245,7 +1247,7 @@ const PLANETS = [
       // Set water available and collide event
       for (const item of GAME_ITEMS) if (item.type === "water") item.available = true;
       const waterCollision = starr.onCollide("water", (water) => {
-        if (!isInGame) return;
+        if (!isInGame || died) return;
         
         // Destroy water, play vfx and sfx
         water.destroy();
@@ -1263,106 +1265,135 @@ const PLANETS = [
         if (health <= 0) flame.destroy();
       });
       
-    },
-    onLeave: () => {
-      /* temperature = 0;
-      flame.destroy();
-      tempLoop.cancel();
-      waterCollision.cancel();
-      for (const item of GAME_ITEMS) if (item.type === "water") item.available = false; */
+      return () => {
+        temperature = 0;
+        flame.destroy();
+        tempLoop.cancel();
+        waterCollision.cancel();
+        for (const item of GAME_ITEMS) if (item.type === "water") item.available = false;
+      };
+
     }
   },
-  { name: "Mars", startM: k.randi(90, 100), endM: k.randi(110, 120),
+  { name: "Mars", startM: 250, endM: 400, color: k.rgb(255, 0, 0),
     onEnter: () => {
-      bg.color = k.rgb(255, 0, 0);
       
-      // Appearance of explosive meteor
-      k.loop(2, () => {
-        if (k.chance(0.75)) return;
-        
-        // Spawn meteor
-        const meteorEx = k.add([
-          k.sprite("meteor-lg"),
-          k.pos(k.rand(MIN_X, MAX_X), -500),
-          k.scale(k.rand(0.1, 0.3)),
-          k.rotate(k.rand(0, 360)),
-          k.anchor("center"),
-          k.area({ scale: 0.25 }),
-          k.z(10),
-          "meteor"
-        ]);
-        
-        const randomSpeed = k.rand(750, 1000);
-        const spinSpeed = k.rand(-120, 120);
-        
-        // Drop and spin
-        meteorEx.onUpdate(() => {
-          meteorEx.pos.y += randomSpeed * k.dt();
-          meteorEx.angle += spinSpeed * k.dt();
-          if (meteorEx.pos.y > k.height() + 500) meteorEx.destroy();
-        });
-        
-      });
-      
-    },
-    onLeave: () => {
-      
-    }
-  },
-  { name: "Mercury", startM: k.randi(130, 140), endM: k.randi(150, 160),
-    onEnter: () => {
-      bg.color = k.rgb(211, 211, 211);
-      
+      // Faster meteors
+      for (const item of GAME_ITEMS) {
+        if (item.type === "meteor") {
+          const [minSpeed, maxSpeed] = item.speed || [300, 500];
+          item.speed = [minSpeed * 1.5, maxSpeed * 1.5];
+        }
+      }
+
       // Lower gravity (sensitivity)
       mouseSensitivity = 0.1;
       keyboardSensitivity = 400;
       starrFloatVelocity = 1.5;
       starrFloatAmplitude = 50;
       starrSpinSpeed = 90;
-      
-    },
-    onLeave: () => {
-      
+
+      return () => {
+        
+        for (const item of GAME_ITEMS) {
+          if (item.type === "meteor") {
+            const [minSpeed, maxSpeed] = item.speed || [300 * 1.5, 500 * 1.5];
+            item.speed = [minSpeed / 1.5, maxSpeed / 1.5];
+          }
+        }
+
+        mouseSensitivity = 0.15;
+        keyboardSensitivity = 600;
+        starrFloatVelocity = 3;
+        starrFloatAmplitude = 25;
+        starrSpinSpeed = 180;
+
+      };
+
     }
   },
-  { name: "Jupiter", startM: k.randi(170, 180), endM: k.randi(190, 200),
+  { name: "Jupiter", startM: 450, endM: 600, color: k.rgb(165, 42, 42),
     onEnter: () => {
-      bg.color = k.rgb(165, 42, 42);
       
       // More meteors
-      for (const item of GAME_ITEMS) {
-        if (item.type === "meteor") item.weight *= 1.5;
-      }
+      for (const item of GAME_ITEMS) if (item.type === "meteor") item.weight *= 3;
+      isInJupiter = true;
       
-    },
-    onLeave: () => {
-      
+      return () => {
+        for (const item of GAME_ITEMS) if (item.type === "meteor") item.weight /= 3;
+        isInJupiter = false;
+      };
+
     }
   },
-  { name: "Uranus", startM: k.randi(250, 260), endM: k.randi(270, 280),
+  { name: "Uranus", startM: 650, endM: 800, color: k.rgb(0, 191, 255),
     onEnter: () => {
-      bg.color = k.rgb(173, 216, 230);
       
-      // Strong wind
-      // ...
+      // Strong winds
+      let windDirection = 0;
+      let windForce = 0;
+      const windEffectLoop = k.onUpdate(() => {
+        if (!isInGame || died) return;
+        if (windDirection !== 0) {
+          starr.pos.x += windDirection * windForce * k.dt();
+        }
+      });
+
+      const windTimerLoop = k.loop(k.rand(4, 8), () => {
+        if (!isInGame || died) return;
+        
+        // Set random direction and force
+        windDirection = k.choose([-1, 1]);
+        windForce = k.rand(500, 1000);
+
+        // Spawn wind lines
+        for (let i = 0; i < 6; i++) {
+          const windLine = k.add([
+            k.rect(k.rand(80, 150), k.rand(1, 3)),
+            k.color(0, 191, 255),
+            k.opacity(0.25),
+            k.pos(windDirection === 1 ? MIN_X : MAX_X, k.rand(0, k.height())),
+            k.anchor("center"),
+            k.z(3)
+          ]);
+          
+          windLine.onUpdate(() => {
+            windLine.pos.x += windDirection * 1200 * k.dt();
+            windLine.opacity -= 1 * k.dt();
+            if (windLine.opacity <= 0) windLine.destroy();
+          });
+        }
+        
+        k.play("wind", { volume: 0.75 });
+        k.shake(8);
+        
+        // Reset wind after 0.25 seconds
+        k.wait(0.25, () => {
+          windDirection = 0;
+          windForce = 0;
+        });
       
-    },
-    onLeave: () => {
-      
+      });
+
+      return () => {
+        windDirection = 0;
+        windForce = 0;
+        windEffectLoop.cancel();
+        windTimerLoop.cancel();
+      };
+
     }
   },
-  { name: "Neptune", startM: k.randi(290, 300), endM: k.randi(310, 320),
+  /* { name: "Neptune", startM: 0, endM: 0, color: k.rgb(0, 0, 255),
     onEnter: () => {
-      bg.color = k.rgb(0, 0, 255);
       
       // Water bubbles
       // ...
       
-    },
-    onLeave: () => {
-      
+      return () => {};
+
     }
-  }
+  } */
 ];
 
 function typeWriterEffect(el, text) {
@@ -1375,24 +1406,34 @@ function typeWriterEffect(el, text) {
   });
 }
 
+let onLeaveCallback = null;
 function updatePlanets() {
   const foundIndex = PLANETS.findIndex((p) => meters >= p.startM && meters <= p.endM);
   const newIndex = foundIndex !== -1 ? foundIndex : null;
 
   // When entered a new planet
   if (newIndex !== currentPlanetIndex) {
-    currentPlanetIndex = newIndex;
     
-    // Trigger onLeave for last planet
+    // Trigger onLeave callback for last planet
     if (currentPlanetIndex !== null) {
       bg.opacity = 0;
-      PLANETS[currentPlanetIndex].onLeave();
+      if (onLeaveCallback) onLeaveCallback();
     }
     
-    // If current planet is present, set its buffs and debuffs
+    // Set new planet index
+    currentPlanetIndex = newIndex;
+
+    // If current planet is present, set its debuffs
     if (currentPlanetIndex !== null) {
-      bg.opacity = 0.025;
-      PLANETS[currentPlanetIndex].onEnter();
+
+      // Apply color if available
+      if (PLANETS[currentPlanetIndex].color) {
+        bg.opacity = 0.025;
+        bg.color = PLANETS[currentPlanetIndex].color;
+      }
+      
+      // Apply debuffs and get onLeave callback
+      onLeaveCallback = PLANETS[currentPlanetIndex].onEnter();
 
       // Show planet's name for 5 seconds
       const currentPlanetName = PLANETS[currentPlanetIndex].name;
