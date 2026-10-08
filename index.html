@@ -5,7 +5,7 @@
   <!-- Prevent FOUC -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      document.documentElement.style.opacity = 100;
+      document.documentElement.style.opacity = 1;
     });
   </script>
   
@@ -206,6 +206,10 @@
     <div id="bottom-bar" class="flex justify-end items-center gap-2 w-full p-4"></div>
     
   </div>
+  
+  <!-- Eruda -->
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
 
 </body>
 </html>
