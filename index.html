@@ -130,10 +130,10 @@
           <span class="text-3xl [-webkit-text-stroke:8px_#111] [paint-order:stroke_fill]">Play</span>
         </button>
 
-        <!-- Credits -->
-        <button id="credits-btn" class="flex flex-col items-center cursor-pointer -mb-6 rotate-4">
-          <img src="./assets/sprites/statics/credits.png" class="-mb-4 w-14 h-14">
-          <span class="text-2xl [-webkit-text-stroke:6px_#111] [paint-order:stroke_fill]">Cred</span>
+        <!-- Rank -->
+        <button id="rank-btn" class="flex flex-col items-center cursor-pointer -mb-6 rotate-4">
+          <img src="./assets/sprites/statics/rank.png" class="-mb-4 w-14 h-14">
+          <span class="text-2xl [-webkit-text-stroke:6px_#111] [paint-order:stroke_fill]">Rank</span>
         </button>
 
       </div>
@@ -161,9 +161,9 @@
     <div id="overlay" class="hidden absolute inset-0 w-full h-full bg-[rgba(0,0,0,0.5)] z-98"></div>
 
     <!-- Shop UI -->
-    <div id="shop-ui" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[rgba(0,0,0,0.85)] pixel-frame max-w-sm px-6 pt-0 pb-4 text-center flex flex-col items-center gap-4 z-99">
+    <div id="shop-ui" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[rgba(0,0,0,0.85)] pixel-frame w-full max-w-sm px-6 pt-0 pb-4 text-center flex flex-col items-center gap-4 z-99">
       <div class="block flex items-center gap-3 text-2xl pixel-frame -mt-4 p-2">
-        <span>The Shop</span>
+        <span>Shop</span>
         <img src="./assets/sprites/statics/flag.png" class="w-8 h-8">
       </div>
       
@@ -171,6 +171,19 @@
       <div id="shop-items" class="flex justify-center items-center mt-4 bg-[rgba(255,255,255,0.25)] pixel-border"></div>
       <span id="shop-item-info" class="text-md text-gray-9 min-h-[2lh] [-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]">(Click to see info)</span>
       <span id="shop-timer" class="text-xl [-webkit-text-stroke:5px_#000] [paint-order:stroke_fill]">Refresh in 00:00</span>
+    </div>
+
+    <!-- Rank UI -->
+    <div id="rank-ui" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[rgba(0,0,0,0.85)] pixel-frame w-full max-w-sm px-6 pt-0 pb-4 text-center flex flex-col items-center gap-2 z-99">
+      <div class="block flex items-center gap-3 text-2xl pixel-frame -mt-4 mb-4 p-2">
+        <span>Rank</span>
+        <img src="./assets/sprites/statics/flag.png" class="w-8 h-8">
+      </div>
+
+      <!-- Best Distance and Rank Display -->
+      <span id="rank-best-distance" class="block text-lg"></span>
+      <span id="rank-display" class="block text-xl"></span>
+      
     </div>
 
   </div>
@@ -206,10 +219,6 @@
     <div id="bottom-bar" class="flex justify-end items-center gap-2 w-full p-4"></div>
     
   </div>
-  
-  <!-- Eruda -->
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <script>eruda.init();</script>
 
 </body>
 </html>

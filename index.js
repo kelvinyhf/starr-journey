@@ -25,9 +25,11 @@ const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 
 // Data storage
 const METERS = "starr_meters";
+const RANK = "starr_rank";
 const COINS = "starr_coins";
 const SILVER_COINS = "starr_silver_coins";
 let bestDistance = parseFloat(localStorage.getItem(METERS) || "0", 10);
+let rank = parseInt(localStorage.getItem(RANK) || "0", 10);
 let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
 let silverCoins = parseInt(localStorage.getItem(SILVER_COINS) || "0", 10);
 
@@ -433,10 +435,12 @@ function gameOver() {
   isStasis = false;
   canDodge = false;
 
-  // Set best distance
+  // Update best distance and rank
   if (meters > bestDistance) {
     bestDistance = meters.toFixed(1);
     localStorage.setItem(METERS, meters.toFixed(1));
+    rank = Math.round(k.mapc(bestDistance, 0, 1473, 284, 1));
+    localStorage.setItem(RANK, rank);
   }
 
   // Set coins + Effect of the shop item "double"
@@ -1492,6 +1496,7 @@ const overlay = document.getElementById("overlay");
 overlay.addEventListener("click", () => {
   overlay.classList.add("hidden");
   shopUI.classList.add("hidden");
+  rankUI.classList.add("hidden");
 });
 
 // ------------------------------
@@ -1726,7 +1731,7 @@ updateShopTimer();
 // ------------------------------
 const shopBtn = document.getElementById("shop-btn");
 const shopUI = document.getElementById("shop-ui");
-shopBtn.addEventListener("click", (e) => {
+shopBtn.addEventListener("click", () => {
   shopUI.classList.remove("hidden");
   overlay.classList.remove("hidden");
 });
@@ -1783,3 +1788,44 @@ function addBuffIcon(buffName) {
 
 // Init shop once
 renderShopItems();
+
+// ------------------------------
+// Rank
+// ------------------------------
+const rankBtn = document.getElementById("rank-btn");
+const rankUI = document.getElementById("rank-ui");
+rankBtn.addEventListener("click", () => {
+  rankUI.classList.remove("hidden");
+  overlay.classList.remove("hidden");
+});
+
+const rankBestDistanceLabel = document.getElementById("rank-best-distance");
+const rankDisplayLabel = document.getElementById("rank-display");
+function renderRank() {
+
+  // Refresh rank
+  rank = Math.round(k.mapc(bestDistance, 0, 1473, 284, 1));
+  localStorage.setItem(RANK, rank);
+
+  // Render labels
+  let rankColor = "text-white";
+
+  if (rank <= 5) {
+    rankColor = "text-amber-11";
+  } else if (rank <= 25) {
+    rankColor = "text-green-11";
+  } else if (rank <= 50) {
+    rankColor = "text-blue-11";
+  } else if (rank <= 100) {
+    rankColor = "text-purple-11";
+  } else {
+    rankColor = "text-gray-11";
+  }
+
+  rankBestDistanceLabel.innerHTML = `Best Distance: <span class="text-red-11 text-xl">${bestDistance}m</span>...`;
+  rankDisplayLabel.innerHTML = `Your rank: <span class="${rankColor} text-2xl">#${rank}</span>!`;
+
+}
+
+// Init rank once
+renderRank();
