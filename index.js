@@ -378,6 +378,8 @@ k.loadSound("buff2", "./assets/sounds/buff2.wav");
 k.loadSound("buff3", "./assets/sounds/buff3.wav");
 k.loadSound("event1", "./assets/sounds/event1.wav");
 k.loadSound("event2", "./assets/sounds/event2.wav");
+k.loadSound("watered", "./assets/sounds/watered.wav");
+k.loadSound("wind", "./assets/sounds/wind.wav");
 k.loadSound("failed", "./assets/sounds/failed.wav");
 k.loadSound("gameover", "./assets/sounds/gameover.wav");
 k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
@@ -689,9 +691,9 @@ k.loop(0.5, () => {
 // Items
 // ------------------------------
 const MENU_ITEMS = [
-  { name: "meteor-sm", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
-  { name: "meteor-md", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
-  { name: "meteor-lg", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 }
+  { name: "meteor-sm", type: "meteor", weight: 1, scale: [0.1, 0.3], hitbox: 0.25 },
+  { name: "meteor-md", type: "meteor", weight: 1, scale: [0.1, 0.3], hitbox: 0.25 },
+  { name: "meteor-lg", type: "meteor", weight: 1, scale: [0.1, 0.3], hitbox: 0.25 }
 ];
 
 let GAME_ITEMS = [
@@ -709,11 +711,11 @@ let GAME_ITEMS = [
   { name: "speed-potion", type: "speed-potion", weight: 0.4, scale: [1, 1.25], category: "positive", isPickup: true },
   { name: "blindness-potion", type: "blindness-potion", weight: 0.2, scale: [1, 1.25], category: "negative", isPickup: true },
   { name: "confusion-potion", type: "confusion-potion", weight: 0.2, scale: [1, 1.25], category: "negative", isPickup: true },
-  { name: "unknown-potion", type: "unknown-potion", weight: 0.05, scale: [1, 1.25], category: "negative", isPickup: true },
   { name: "coin-bag", type: "coin-bag", weight: 0.2, scale: [1, 1.25], category: "positive", isPickup: true },
   
   // Special Pickup
-  { name: "water", type: "water", weight: 0.3, scale: [1, 1.25], category: "positive", available: false },
+  { name: "unknown-potion", type: "unknown-potion", weight: 0.1, scale: [1, 1.25], category: "negative", available: false },
+  { name: "water", type: "water", weight: 0.5, scale: [1, 1.25], category: "positive", available: false },
   
 ];
 
@@ -1191,6 +1193,33 @@ for (const potion of POTIONS) {
   });
 }
 
+// Water
+starr.onCollide("water", (water) => {
+  if (!isInGame || died) return;
+  
+  // Destroy water and play sfx
+  water.destroy();
+  k.play("watered", { volume: 0.75 });
+  
+  // Watered vfx
+  const wateredEffect = k.add([
+    k.sprite("starr-watered"),
+    k.pos(starr.pos),
+    k.opacity(0.75),
+    k.rotate(starr.angle),
+    k.anchor("center"),
+    k.z(starr.z + 1)
+  ]);
+
+  wateredEffect.onUpdate(() => {
+    wateredEffect.pos = starr.pos;
+    wateredEffect.angle = starr.angle;
+    wateredEffect.opacity -= 1.5 * k.dt();
+    if (wateredEffect.opacity <= 0) wateredEffect.destroy();
+  });
+  
+});
+
 // ------------------------------
 // Meter Counter
 // ------------------------------
@@ -1213,13 +1242,20 @@ k.onUpdate(() => {
 // Planets
 // ------------------------------
 const planetDisplay = document.getElementById("planet-display");
-const PLANETS = [
-  { name: "Earth", startM: 25, endM: 75, color: null,
+const planetInfoDisplay = document.getElementById("planet-info-display");
+let PLANETS = [
+  { name: "Earth", color: null, info: `Our peaceful home...`,
     onEnter: () => {
-      return () => {};
+
+      // Set unknown potion available
+      for (const item of GAME_ITEMS) if (item.type === "unknown-potion") item.available = true;
+      return () => {
+        for (const item of GAME_ITEMS) if (item.type === "unknown-potion") item.available = false;
+      };
+
     }
   },
-  { name: "Venus", startM: 100, endM: 200, color: k.rgb(255, 255, 0),
+  { name: "Venus", color: k.rgb(255, 255, 0), info: `Try to keep hydrated!`,
     onEnter: () => {
       
       // Add temperature meter and flame
@@ -1248,32 +1284,11 @@ const PLANETS = [
         }
       });
       
-      // Set water available and collide event
+      // Set water available
       for (const item of GAME_ITEMS) if (item.type === "water") item.available = true;
-      const waterCollision = starr.onCollide("water", (water) => {
+      const waterCollision = starr.onCollide("water", () => {
         if (!isInGame || died) return;
         
-        // Destroy water and play sfx
-        water.destroy();
-        k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
-        
-        // Watered vfx
-        const wateredEffect = k.add([
-          k.sprite("starr-watered"),
-          k.pos(starr.pos),
-          k.opacity(0.75),
-          k.rotate(starr.angle),
-          k.anchor("center"),
-          k.z(starr.z + 1)
-        ]);
-
-        wateredEffect.onUpdate(() => {
-          wateredEffect.pos = starr.pos;
-          wateredEffect.angle = starr.angle;
-          wateredEffect.opacity -= 1.5 * k.dt();
-          if (wateredEffect.opacity <= 0) wateredEffect.destroy();
-        });
-
         // Lower temperature 
         temperature -= 25;
         flame.opacity = temperature / 100;
@@ -1295,14 +1310,14 @@ const PLANETS = [
 
     }
   },
-  { name: "Mars", startM: 250, endM: 400, color: k.rgb(255, 0, 0),
+  { name: "Mars", color: k.rgb(255, 0, 0), info: `Dancing through meteors...`,
     onEnter: () => {
       
       // Faster meteors
       for (const item of GAME_ITEMS) {
         if (item.type === "meteor") {
           const [minSpeed, maxSpeed] = item.speed || [300, 500];
-          item.speed = [minSpeed * 1.5, maxSpeed * 1.5];
+          item.speed = [minSpeed * 1.4, maxSpeed * 1.4];
         }
       }
 
@@ -1317,8 +1332,8 @@ const PLANETS = [
         
         for (const item of GAME_ITEMS) {
           if (item.type === "meteor") {
-            const [minSpeed, maxSpeed] = item.speed || [300 * 1.5, 500 * 1.5];
-            item.speed = [minSpeed / 1.5, maxSpeed / 1.5];
+            const [minSpeed, maxSpeed] = item.speed || [300 * 1.4, 500 * 1.4];
+            item.speed = [minSpeed / 1.4, maxSpeed / 1.4];
           }
         }
 
@@ -1332,7 +1347,7 @@ const PLANETS = [
 
     }
   },
-  { name: "Jupiter", startM: 450, endM: 600, color: k.rgb(165, 42, 42),
+  { name: "Jupiter", color: k.rgb(165, 42, 42), info: `A really solid one!`,
     onEnter: () => {
       
       // More meteors
@@ -1346,7 +1361,7 @@ const PLANETS = [
 
     }
   },
-  { name: "Uranus", startM: 650, endM: 800, color: k.rgb(0, 191, 255),
+  { name: "Uranus", color: k.rgb(0, 191, 255), info: `It's cold and windy...`,
     onEnter: () => {
       
       // Strong winds
@@ -1359,7 +1374,7 @@ const PLANETS = [
         }
       });
 
-      const windTimerLoop = k.loop(k.rand(4, 8), () => {
+      const windTimerLoop = k.loop(k.rand(3, 6), () => {
         if (!isInGame || died) return;
         
         // Set random direction and force
@@ -1404,7 +1419,7 @@ const PLANETS = [
 
     }
   },
-  /* { name: "Neptune", startM: 0, endM: 0, color: k.rgb(0, 0, 255),
+  { name: "Neptune", color: k.rgb(0, 0, 255), info: `Don't get trapped!`,
     onEnter: () => {
       
       // Water bubbles
@@ -1413,13 +1428,16 @@ const PLANETS = [
       return () => {};
 
     }
-  } */
+  }
 ];
 
 function typeWriterEffect(el, text) {
+  el.innerText = "";
+  let i = 0;
   const typeWriter = k.loop(0.05, () => {
-    if (el.innerText !== text) {
-      el.innerText = text.substring(0, el.innerText.length + 1);
+    if (i < text.length) {
+      i++;
+      el.innerText = text.substring(0, i);
     } else {
       typeWriter.cancel();
     }
@@ -1455,11 +1473,14 @@ function updatePlanets() {
       // Apply debuffs and get onLeave callback
       onLeaveCallback = PLANETS[currentPlanetIndex].onEnter();
 
-      // Show planet's name for 5 seconds
+      // Show planet's name and info for 5 seconds
       const currentPlanetName = PLANETS[currentPlanetIndex].name;
+      const currentPlanetInfo = PLANETS[currentPlanetIndex].info;
       typeWriterEffect(planetDisplay, currentPlanetName);
-      k.wait(3, () => {
+      k.wait(1, () => typeWriterEffect(planetInfoDisplay, currentPlanetInfo));
+      k.wait(5, () => {
         if (planetDisplay.innerText === currentPlanetName) planetDisplay.innerText = "";
+        if (planetInfoDisplay.innerText === currentPlanetInfo) planetInfoDisplay.innerText = "";
       });
       
       // Play sfx and spawn the planet
@@ -1475,10 +1496,12 @@ function updatePlanets() {
         k.z(-1),
       ]);
 
+      const endM = PLANETS[currentPlanetIndex].endM;
       planet.onUpdate(() => {
-        if (planet.opacity < 0.35) planet.opacity += 0.1 * k.dt();
-        planet.pos.y += 10 * k.dt();
-        planet.angle += 2 * k.dt();
+        if (planet.opacity < 0.35 && meters < endM) planet.opacity += 0.1 * k.dt();
+        if (meters > endM) planet.opacity -= 0.1 * k.dt();
+        planet.pos.y += 5 * k.dt();
+        planet.angle += 1 * k.dt();
         if (planet.pos.y > k.height() + 500) planet.destroy();
       });
 
@@ -1486,6 +1509,29 @@ function updatePlanets() {
 
   }
 }
+
+function shuffle(array) {
+  let currentIndex = array.length;
+  let randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+}
+
+function initPlanetsOrder() {
+  shuffle(PLANETS);
+  const startMs = [25, 100, 250, 450, 650];
+  const endMs = [75, 200, 400, 600, 800]
+  for (let i = 0; i < PLANETS.length; i++) {
+    PLANETS[i].startM = startMs[i];
+    PLANETS[i].endM = endMs[i];
+  }
+}
+
+// Set random planets order
+initPlanetsOrder();
 
 // ------------------------------
 // Overlay and Modals
