@@ -73,6 +73,7 @@ k.loadSprite("starr-purple-border", "./assets/sprites/starr/purple-border.png");
 k.loadSprite("starr-pink-border", "./assets/sprites/starr/pink-border.png");
 k.loadSprite("starr-black-border", "./assets/sprites/starr/black-border.png");
 k.loadSprite("starr-watered", "./assets/sprites/starr/watered.png");
+k.loadSprite("starr-iced", "./assets/sprites/starr/iced.png");
 
 // Meteors
 k.loadSprite("meteor-sm", "./assets/sprites/meteors/meteor-sm.png");
@@ -365,6 +366,9 @@ k.loadSprite(
   }
 );
 
+// Ice
+k.loadSprite("ice", "./assets/sprites/pickups/ice.png");
+
 // ------------------------------
 // Load sounds
 // ------------------------------
@@ -379,6 +383,7 @@ k.loadSound("buff3", "./assets/sounds/buff3.wav");
 k.loadSound("event1", "./assets/sounds/event1.wav");
 k.loadSound("event2", "./assets/sounds/event2.wav");
 k.loadSound("watered", "./assets/sounds/watered.wav");
+k.loadSound("iced", "./assets/sounds/iced.wav");
 k.loadSound("wind", "./assets/sounds/wind.wav");
 k.loadSound("failed", "./assets/sounds/failed.wav");
 k.loadSound("gameover", "./assets/sounds/gameover.wav");
@@ -716,7 +721,8 @@ let GAME_ITEMS = [
   // Special Pickup
   { name: "unknown-potion", type: "unknown-potion", weight: 0.1, scale: [1, 1.25], category: "negative", available: false },
   { name: "water", type: "water", weight: 0.5, scale: [1, 1.25], category: "positive", available: false },
-  
+  { name: "ice", type: "ice", weight: 1, scale: [0.9, 1.1], speed: [600, 800], category: "negative", available: false }
+
 ];
 
 let lastPickupSpawnTime = 0;
@@ -1217,7 +1223,60 @@ starr.onCollide("water", (water) => {
     wateredEffect.opacity -= 1.5 * k.dt();
     if (wateredEffect.opacity <= 0) wateredEffect.destroy();
   });
+
+});
+
+// Ice
+let frozen = false;
+starr.onCollide("ice", (ice) => {
+  if (!isInGame || died) return;
   
+  // Destroy ice and play sfx
+  ice.destroy();
+  k.play("iced", { volume: 0.75 });
+
+  // Iced vfx
+  const icedEffect = k.add([
+    k.sprite("starr-iced"),
+    k.pos(starr.pos),
+    k.opacity(0.75),
+    k.rotate(starr.angle),
+    k.anchor("center"),
+    k.z(starr.z + 1)
+  ]);
+
+  icedEffect.onUpdate(() => {
+    icedEffect.pos = starr.pos;
+    icedEffect.angle = starr.angle;
+    if (icedEffect.opacity <= 0) {
+      icedEffect.destroy();
+    } else if (icedEffect.opacity <= 0.5) {
+      icedEffect.opacity -= 0.2 * k.dt();
+    } else {
+      icedEffect.opacity -= 1.5 * k.dt();
+    }
+  });
+
+  // Lower mouse and keyboard sensitivity
+  if (frozen) {
+    return;
+  } else {
+    frozen = true;
+  }
+
+  mouseSensitivity = 0;
+  keyboardSensitivity = 0;
+  k.wait(1, () => {
+    const loop = k.onUpdate(() => {
+      if (mouseSensitivity >= 0.15 && keyboardSensitivity >= 600) {
+        loop.cancel();
+        frozen = false;
+      }
+      mouseSensitivity += 0.05 * k.dt();
+      keyboardSensitivity += 200 * k.dt();
+    });
+  });
+
 });
 
 // ------------------------------
@@ -1419,13 +1478,14 @@ let PLANETS = [
 
     }
   },
-  { name: "Neptune", color: k.rgb(0, 0, 255), info: `Don't get trapped!`,
+  { name: "Neptune", color: k.rgb(0, 0, 255), info: `Don't get frozen!`,
     onEnter: () => {
       
-      // Water bubbles
-      // ...
-      
-      return () => {};
+      // Set ice available
+      for (const item of GAME_ITEMS) if (item.type === "ice") item.available = true;
+      return () => {
+        for (const item of GAME_ITEMS) if (item.type === "ice") item.available = false;
+      };
 
     }
   }
