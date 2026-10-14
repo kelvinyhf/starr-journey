@@ -9,6 +9,14 @@ const k = kaplay({
   global: false
 });
 
+// Background color filter
+const bg = k.add([
+  k.rect(k.width(), k.height()),
+  k.color(0, 0, 0),
+  k.opacity(0),
+  k.z(-99)
+]);
+
 // Make images not draggable
 document.addEventListener('dragstart', (e) => e.preventDefault());
 
@@ -17,15 +25,19 @@ const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
 
 // Data storage
 const METERS = "starr_meters";
+const RANK = "starr_rank";
 const COINS = "starr_coins";
 const SILVER_COINS = "starr_silver_coins";
 let bestDistance = parseFloat(localStorage.getItem(METERS) || "0", 10);
+let rank = parseInt(localStorage.getItem(RANK) || "0", 10);
 let coins = parseInt(localStorage.getItem(COINS) || "0", 10);
 let silverCoins = parseInt(localStorage.getItem(SILVER_COINS) || "0", 10);
 
 // Game const
 const MIN_X = Math.max((k.width() / 2) - 240, 0);
 const MAX_X = Math.min((k.width() / 2) + 240, k.width());
+const baseX = k.width() * 0.5;
+const baseY = k.height() * 0.8;
 
 // Game vars and flags
 let controlMode = "mouse";
@@ -39,6 +51,7 @@ let meters = 0;
 let speed = 1;
 let collectedCoins = 0;
 let collectedSilverCoins = 0;
+let currentPlanetIndex = null;
 
 // Potion effects
 let isBlind = false;
@@ -59,6 +72,8 @@ k.loadSprite("starr-orange-border", "./assets/sprites/starr/orange-border.png");
 k.loadSprite("starr-purple-border", "./assets/sprites/starr/purple-border.png");
 k.loadSprite("starr-pink-border", "./assets/sprites/starr/pink-border.png");
 k.loadSprite("starr-black-border", "./assets/sprites/starr/black-border.png");
+k.loadSprite("starr-watered", "./assets/sprites/starr/watered.png");
+k.loadSprite("starr-iced", "./assets/sprites/starr/iced.png");
 
 // Meteors
 k.loadSprite("meteor-sm", "./assets/sprites/meteors/meteor-sm.png");
@@ -317,16 +332,59 @@ k.loadSprite("shield", "./assets/sprites/statics/shield-effect.png");
 k.loadSprite("shield-explosion", "./assets/sprites/statics/shield-explosion.png");
 k.loadSprite("stasis", "./assets/sprites/statics/stasis-effect.png");
 
+// Planets
+k.loadSprite("earth", "./assets/sprites/planets/earth.png");
+k.loadSprite("venus", "./assets/sprites/planets/venus.png");
+k.loadSprite("mars", "./assets/sprites/planets/mars.png");
+k.loadSprite("jupiter", "./assets/sprites/planets/jupiter.png");
+k.loadSprite("uranus", "./assets/sprites/planets/uranus.png");
+k.loadSprite("neptune", "./assets/sprites/planets/neptune.png");
+
+// Water and Flame
+k.loadSprite("water", "./assets/sprites/pickups/water.png");
+k.loadSprite(
+  "flame",
+  [
+    "./assets/sprites/flame/frame1.png",
+    "./assets/sprites/flame/frame2.png",
+    "./assets/sprites/flame/frame3.png",
+    "./assets/sprites/flame/frame4.png",
+    "./assets/sprites/flame/frame5.png",
+    "./assets/sprites/flame/frame6.png",
+    "./assets/sprites/flame/frame7.png",
+    "./assets/sprites/flame/frame8.png"
+  ],
+  {
+    anims: {
+      burn: {
+        from: 0,
+        to: 7,
+        speed: 25,
+        loop: true
+      }
+    }
+  }
+);
+
+// Ice
+k.loadSprite("ice", "./assets/sprites/pickups/ice.png");
+
 // ------------------------------
 // Load sounds
 // ------------------------------
 k.loadSound("coin1", "./assets/sounds/coin1.wav");
 k.loadSound("coin2", "./assets/sounds/coin2.wav");
+k.loadSound("coinBag", "./assets/sounds/coin-bag.wav");
 k.loadSound("explosion1", "./assets/sounds/explosion1.wav");
 k.loadSound("explosion2", "./assets/sounds/explosion2.wav");
 k.loadSound("buff1", "./assets/sounds/buff1.wav");
 k.loadSound("buff2", "./assets/sounds/buff2.wav");
 k.loadSound("buff3", "./assets/sounds/buff3.wav");
+k.loadSound("event1", "./assets/sounds/event1.wav");
+k.loadSound("event2", "./assets/sounds/event2.wav");
+k.loadSound("watered", "./assets/sounds/watered.wav");
+k.loadSound("iced", "./assets/sounds/iced.wav");
+k.loadSound("wind", "./assets/sounds/wind.wav");
 k.loadSound("failed", "./assets/sounds/failed.wav");
 k.loadSound("gameover", "./assets/sounds/gameover.wav");
 k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
@@ -349,7 +407,7 @@ function playBGM(index) {
   const currentBGM = k.play(bgms[index], { volume: 0.5 });
   currentBGM.onEnd(() => {
     k.wait(5, () => {
-      playBGM(index === 2 ? 0 : ++index)
+      playBGM(index === 2 ? 0 : ++index);
     });
   });
 }
@@ -367,6 +425,7 @@ const retryBtn = document.getElementById("retry-btn");
 function enterGame(mode) {
   isInGame = true;
   controlMode = mode;
+  starr.pos.y = baseY;
   menuUI.classList.add('hidden');
   gameUI.classList.remove('hidden');
   playBGM(startIndex);
@@ -382,12 +441,13 @@ function gameOver() {
   hasShield = false;
   isStasis = false;
   canDodge = false;
-  isDoubleCoins = false;
 
-  // Set best distance
+  // Update best distance and rank
   if (meters > bestDistance) {
     bestDistance = meters.toFixed(1);
     localStorage.setItem(METERS, meters.toFixed(1));
+    rank = Math.round(k.mapc(bestDistance, 0, 1473, 284, 1));
+    localStorage.setItem(RANK, rank);
   }
 
   // Set coins + Effect of the shop item "double"
@@ -465,8 +525,6 @@ tipLabel.innerText = k.choose(TIPS);
 // ------------------------------
 // Starr
 // ------------------------------
-const baseX = k.width() * 0.5;
-const baseY = k.height() * 0.8;
 const starr = k.add([
   k.sprite("starr"),
   k.pos(baseX, baseY),
@@ -474,10 +532,15 @@ const starr = k.add([
   k.anchor("center"),
   k.area(),
   k.z(99),
-  k.shader("flash")
+  k.shader()
 ]);
 starr.shader = null;
 
+let mouseSensitivity = 0.15;
+let keyboardSensitivity = 600;
+let starrFloatVelocity = 3;
+let starrFloatAmplitude = 25;
+let starrSpinSpeed = 180;
 let trailTimer = 0;
 starr.onUpdate(() => {
 
@@ -495,16 +558,15 @@ starr.onUpdate(() => {
         const mouseX = k.toWorld(k.mousePos()).x;
         const actualX = isConfused ? k.width() - mouseX : mouseX; // Effect of "confusion potion"
         const targetX = k.clamp(actualX, MIN_X, MAX_X);
-        starr.pos.x = k.lerp(starr.pos.x, targetX, 0.15);
+        starr.pos.x = k.lerp(starr.pos.x, targetX, mouseSensitivity);
 
       } else {
-        starr.pos.x = k.lerp(starr.pos.x, baseX, 0.15);
+        starr.pos.x = k.lerp(starr.pos.x, baseX, mouseSensitivity);
       }
     } else {
 
       const moveLeft = keysPressed["a"] || keysPressed["arrowleft"];
       const moveRight = keysPressed["d"] || keysPressed["arrowright"];
-      const keyboardSpeed = 500;
 
       // Get direction
       let dir = 0;
@@ -513,7 +575,7 @@ starr.onUpdate(() => {
       if (isConfused) dir *= -1;  // Effect of "confusion potion"
 
       // Make Starr moves
-      starr.pos.x += dir * keyboardSpeed * k.dt();
+      starr.pos.x += dir * keyboardSensitivity * k.dt();
       starr.pos.x = k.clamp(starr.pos.x, MIN_X, MAX_X);
 
     }
@@ -531,8 +593,8 @@ starr.onUpdate(() => {
   }
 
   // Make it float and spins
-  starr.pos.y = baseY + Math.sin(k.time() * 3) * 25;
-  starr.angle += 180 * getDifficulty() * k.dt();
+  starr.pos.y = baseY + Math.sin(k.time() * starrFloatVelocity) * starrFloatAmplitude;
+  starr.angle += starrSpinSpeed * getDifficulty() * k.dt();
 
   // Flash effect when invincible
   if (isInvincible) starr.opacity = k.map(Math.sin(k.time() * 20), -1, 1, 0.25, 1);
@@ -634,9 +696,9 @@ k.loop(0.5, () => {
 // Items
 // ------------------------------
 const MENU_ITEMS = [
-  { name: "meteor-sm", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
-  { name: "meteor-md", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 },
-  { name: "meteor-lg", type: "meteor", weight: 2, scale: [0.1, 0.3], hitbox: 0.25 }
+  { name: "meteor-sm", type: "meteor", weight: 1, scale: [0.1, 0.3], hitbox: 0.25 },
+  { name: "meteor-md", type: "meteor", weight: 1, scale: [0.1, 0.3], hitbox: 0.25 },
+  { name: "meteor-lg", type: "meteor", weight: 1, scale: [0.1, 0.3], hitbox: 0.25 }
 ];
 
 let GAME_ITEMS = [
@@ -650,17 +712,27 @@ let GAME_ITEMS = [
   { name: "meteor-fs", type: "meteor", weight: 0.35, scale: [0.1, 0.3], hitbox: 0.15, speed: [750, 1000], category: "negative" },
 
   // Pickups
-  { name: "health-potion", type: "health-potion", weight: 0.05, scale: [1, 1.25], category: "positive" },
-  { name: "speed-potion", type: "speed-potion", weight: 0.25, scale: [1, 1.25], category: "positive" },
-  { name: "blindness-potion", type: "blindness-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
-  { name: "confusion-potion", type: "confusion-potion", weight: 0.1, scale: [1, 1.25], category: "negative" },
-  { name: "unknown-potion", type: "unknown-potion", weight: 0.01, scale: [1, 1.25], category: "negative" },
-  { name: "coin-bag", type: "coin-bag", weight: 0.1, scale: [1, 1.25], category: "positive" },
+  { name: "health-potion", type: "health-potion", weight: 0.2, scale: [1, 1.25], category: "positive", isPickup: true },
+  { name: "speed-potion", type: "speed-potion", weight: 0.4, scale: [1, 1.25], category: "positive", isPickup: true },
+  { name: "blindness-potion", type: "blindness-potion", weight: 0.2, scale: [1, 1.25], category: "negative", isPickup: true },
+  { name: "confusion-potion", type: "confusion-potion", weight: 0.2, scale: [1, 1.25], category: "negative", isPickup: true },
+  { name: "coin-bag", type: "coin-bag", weight: 0.2, scale: [1, 1.25], category: "positive", isPickup: true },
+  
+  // Special Pickup
+  { name: "unknown-potion", type: "unknown-potion", weight: 0.1, scale: [1, 1.25], category: "negative", available: false },
+  { name: "water", type: "water", weight: 0.5, scale: [1, 1.25], category: "positive", available: false },
+  { name: "ice", type: "ice", weight: 1, scale: [0.9, 1.1], speed: [600, 800], category: "negative", available: false }
 
 ];
 
+let lastPickupSpawnTime = 0;
 function getRandomItem(config) {
-  const availableItems = config;
+  const currentTime = k.time();
+  const availableItems = config.filter((item) => {
+    if (item.available === false) return false;
+    if (item.isPickup && (currentTime - lastPickupSpawnTime < 10)) return false;
+    return true;
+  });
   
   const totalWeight = availableItems.reduce((sum, item) => sum + item.weight, 0);
   let randomNum = k.rand(0, totalWeight);
@@ -673,16 +745,21 @@ function getRandomItem(config) {
 }
 
 let itemTimer = 0;
+let isInJupiter = false;
 k.loop(0.1, () => {
   itemTimer += 0.1;
   const baseInterval = isInGame ? 0.3 : 0.75;
-  const targetInterval = baseInterval / getDifficulty();
+  const targetInterval = baseInterval / getDifficulty() / (isInJupiter ? 1.5 : 1);
 
   if (itemTimer >= targetInterval) {
     itemTimer = 0;
 
     const itemConfig = getRandomItem(isInGame ? GAME_ITEMS : MENU_ITEMS);
-
+    
+    // Return if no item available, update pickup spawn time if it is pickup
+    if (!itemConfig) return;
+    if (itemConfig.isPickup) lastPickupSpawnTime = k.time();
+    
     const [minScale, maxScale] = itemConfig.scale || [0.75, 1];
     const randomScale = k.rand(minScale, maxScale);
 
@@ -840,7 +917,7 @@ starr.onCollide("coin-bag", (bag) => {
 
   // Destroy bag and play sfx
   bag.destroy();
-  k.play("coin1", { volume: 0.4 }).onEnd(() => k.play("coin2", { volume: 0.4 }));
+  k.play("coinBag", { volume: 0.4 });
 
   // Add 8-24 gold coins
   const randomGoldCoins =  k.randi(2, 6);
@@ -865,10 +942,9 @@ function changeHealth(num, meteorPos) {
   // Set health bar
   healthBar.src = `./assets/sprites/health-bar/${health}.png`;
   
-  // Destroy Starr when health < 0
+  // Destroy Starr when health <= 0
   if (meteorPos) {
     if (health <= 0) {
-      health = 0;
       gameOver();
       explode(meteorPos, true);
       k.play("explosion2", { volume: 1 });
@@ -1123,6 +1199,86 @@ for (const potion of POTIONS) {
   });
 }
 
+// Water
+starr.onCollide("water", (water) => {
+  if (!isInGame || died) return;
+  
+  // Destroy water and play sfx
+  water.destroy();
+  k.play("watered", { volume: 0.75 });
+  
+  // Watered vfx
+  const wateredEffect = k.add([
+    k.sprite("starr-watered"),
+    k.pos(starr.pos),
+    k.opacity(0.75),
+    k.rotate(starr.angle),
+    k.anchor("center"),
+    k.z(starr.z + 1)
+  ]);
+
+  wateredEffect.onUpdate(() => {
+    wateredEffect.pos = starr.pos;
+    wateredEffect.angle = starr.angle;
+    wateredEffect.opacity -= 1.5 * k.dt();
+    if (wateredEffect.opacity <= 0) wateredEffect.destroy();
+  });
+
+});
+
+// Ice
+let frozen = false;
+starr.onCollide("ice", (ice) => {
+  if (!isInGame || died) return;
+  
+  // Destroy ice and play sfx
+  ice.destroy();
+  k.play("iced", { volume: 0.75 });
+
+  // Iced vfx
+  const icedEffect = k.add([
+    k.sprite("starr-iced"),
+    k.pos(starr.pos),
+    k.opacity(0.75),
+    k.rotate(starr.angle),
+    k.anchor("center"),
+    k.z(starr.z + 1)
+  ]);
+
+  icedEffect.onUpdate(() => {
+    icedEffect.pos = starr.pos;
+    icedEffect.angle = starr.angle;
+    if (icedEffect.opacity <= 0) {
+      icedEffect.destroy();
+    } else if (icedEffect.opacity <= 0.5) {
+      icedEffect.opacity -= 0.2 * k.dt();
+    } else {
+      icedEffect.opacity -= 1.5 * k.dt();
+    }
+  });
+
+  // Lower mouse and keyboard sensitivity
+  if (frozen) {
+    return;
+  } else {
+    frozen = true;
+  }
+
+  mouseSensitivity = 0;
+  keyboardSensitivity = 0;
+  k.wait(1, () => {
+    const loop = k.onUpdate(() => {
+      if (mouseSensitivity >= 0.15 && keyboardSensitivity >= 600) {
+        loop.cancel();
+        frozen = false;
+      }
+      mouseSensitivity += 0.05 * k.dt();
+      keyboardSensitivity += 200 * k.dt();
+    });
+  });
+
+});
+
 // ------------------------------
 // Meter Counter
 // ------------------------------
@@ -1138,7 +1294,304 @@ k.onUpdate(() => {
   if (!isInGame || died) return;
   meters += speed * k.dt();
   meterCounter.innerText = meters.toFixed(1) + "m";
+  updatePlanets();
 });
+
+// ------------------------------
+// Planets
+// ------------------------------
+const planetDisplay = document.getElementById("planet-display");
+const planetInfoDisplay = document.getElementById("planet-info-display");
+let PLANETS = [
+  { name: "Earth", color: null, info: `Our peaceful home...`,
+    onEnter: () => {
+
+      // Set unknown potion available
+      for (const item of GAME_ITEMS) if (item.type === "unknown-potion") item.available = true;
+      return () => {
+        for (const item of GAME_ITEMS) if (item.type === "unknown-potion") item.available = false;
+      };
+
+    }
+  },
+  { name: "Venus", color: k.rgb(255, 255, 0), info: `Try to keep hydrated!`,
+    onEnter: () => {
+      
+      // Add temperature meter and flame
+      let temperature = 0;
+      const flame = k.add([
+        k.sprite("flame", { anim: "burn" }),
+        k.pos(starr.pos),
+        k.scale(3),
+        k.opacity(0),
+        k.anchor("center"),
+        k.z(starr.z - 1)
+      ]);
+      flame.onUpdate(() => flame.pos = starr.pos);
+      flame.play("burn");
+      
+      // Increase temperature as time past
+      const tempLoop = k.loop(10, () => {
+        if (!isInGame || died) return;
+        if (temperature < 100) {
+          temperature += 25;
+          flame.opacity = temperature / 100;
+          
+          // Instantly kill starr when overheated
+          if (temperature >= 100) changeHealth(-999, starr.pos);
+          
+        }
+      });
+      
+      // Set water available
+      for (const item of GAME_ITEMS) if (item.type === "water") item.available = true;
+      const waterCollision = starr.onCollide("water", () => {
+        if (!isInGame || died) return;
+        
+        // Lower temperature 
+        temperature -= 25;
+        flame.opacity = temperature / 100;
+        
+      });
+      
+      // Destroy flame on death
+      flame.onUpdate(() => {
+        if (health <= 0) flame.destroy();
+      });
+      
+      return () => {
+        temperature = 0;
+        flame.destroy();
+        tempLoop.cancel();
+        waterCollision.cancel();
+        for (const item of GAME_ITEMS) if (item.type === "water") item.available = false;
+      };
+
+    }
+  },
+  { name: "Mars", color: k.rgb(255, 0, 0), info: `Dancing through meteors...`,
+    onEnter: () => {
+      
+      // Faster meteors
+      for (const item of GAME_ITEMS) {
+        if (item.type === "meteor") {
+          const [minSpeed, maxSpeed] = item.speed || [300, 500];
+          item.speed = [minSpeed * 1.4, maxSpeed * 1.4];
+        }
+      }
+
+      // Lower gravity (sensitivity)
+      mouseSensitivity = 0.1;
+      keyboardSensitivity = 400;
+      starrFloatVelocity = 1.5;
+      starrFloatAmplitude = 50;
+      starrSpinSpeed = 90;
+
+      return () => {
+        
+        for (const item of GAME_ITEMS) {
+          if (item.type === "meteor") {
+            const [minSpeed, maxSpeed] = item.speed || [300 * 1.4, 500 * 1.4];
+            item.speed = [minSpeed / 1.4, maxSpeed / 1.4];
+          }
+        }
+
+        mouseSensitivity = 0.15;
+        keyboardSensitivity = 600;
+        starrFloatVelocity = 3;
+        starrFloatAmplitude = 25;
+        starrSpinSpeed = 180;
+
+      };
+
+    }
+  },
+  { name: "Jupiter", color: k.rgb(165, 42, 42), info: `A really solid one!`,
+    onEnter: () => {
+      
+      // More meteors
+      for (const item of GAME_ITEMS) if (item.type === "meteor") item.weight *= 3;
+      isInJupiter = true;
+      
+      return () => {
+        for (const item of GAME_ITEMS) if (item.type === "meteor") item.weight /= 3;
+        isInJupiter = false;
+      };
+
+    }
+  },
+  { name: "Uranus", color: k.rgb(0, 191, 255), info: `It's cold and windy...`,
+    onEnter: () => {
+      
+      // Strong winds
+      let windDirection = 0;
+      let windForce = 0;
+      const windEffectLoop = k.onUpdate(() => {
+        if (!isInGame || died) return;
+        if (windDirection !== 0) {
+          starr.pos.x += windDirection * windForce * k.dt();
+        }
+      });
+
+      const windTimerLoop = k.loop(k.rand(3, 6), () => {
+        if (!isInGame || died) return;
+        
+        // Set random direction and force
+        windDirection = k.choose([-1, 1]);
+        windForce = k.rand(500, 1000);
+
+        // Spawn wind lines
+        for (let i = 0; i < 6; i++) {
+          const windLine = k.add([
+            k.rect(k.rand(80, 150), k.rand(1, 3)),
+            k.color(0, 191, 255),
+            k.opacity(0.25),
+            k.pos(windDirection === 1 ? MIN_X : MAX_X, k.rand(0, k.height())),
+            k.anchor("center"),
+            k.z(3)
+          ]);
+          
+          windLine.onUpdate(() => {
+            windLine.pos.x += windDirection * 1200 * k.dt();
+            windLine.opacity -= 1 * k.dt();
+            if (windLine.opacity <= 0) windLine.destroy();
+          });
+        }
+        
+        k.play("wind", { volume: 0.75 });
+        k.shake(8);
+        
+        // Reset wind after 0.25 seconds
+        k.wait(0.25, () => {
+          windDirection = 0;
+          windForce = 0;
+        });
+      
+      });
+
+      return () => {
+        windDirection = 0;
+        windForce = 0;
+        windEffectLoop.cancel();
+        windTimerLoop.cancel();
+      };
+
+    }
+  },
+  { name: "Neptune", color: k.rgb(0, 0, 255), info: `Don't get frozen!`,
+    onEnter: () => {
+      
+      // Set ice available
+      for (const item of GAME_ITEMS) if (item.type === "ice") item.available = true;
+      return () => {
+        for (const item of GAME_ITEMS) if (item.type === "ice") item.available = false;
+      };
+
+    }
+  }
+];
+
+function typeWriterEffect(el, text) {
+  el.innerText = "";
+  let i = 0;
+  const typeWriter = k.loop(0.05, () => {
+    if (i < text.length) {
+      i++;
+      el.innerText = text.substring(0, i);
+    } else {
+      typeWriter.cancel();
+    }
+  });
+}
+
+let onLeaveCallback = null;
+function updatePlanets() {
+  const foundIndex = PLANETS.findIndex((p) => meters >= p.startM && meters <= p.endM);
+  const newIndex = foundIndex !== -1 ? foundIndex : null;
+
+  // When entered a new planet
+  if (newIndex !== currentPlanetIndex) {
+    
+    // Trigger onLeave callback for last planet
+    if (currentPlanetIndex !== null) {
+      bg.opacity = 0;
+      if (onLeaveCallback) onLeaveCallback();
+    }
+    
+    // Set new planet index
+    currentPlanetIndex = newIndex;
+
+    // If current planet is present, set its debuffs
+    if (currentPlanetIndex !== null) {
+
+      // Apply color if available
+      if (PLANETS[currentPlanetIndex].color) {
+        bg.opacity = 0.025;
+        bg.color = PLANETS[currentPlanetIndex].color;
+      }
+      
+      // Apply debuffs and get onLeave callback
+      onLeaveCallback = PLANETS[currentPlanetIndex].onEnter();
+
+      // Show planet's name and info for 5 seconds
+      const currentPlanetName = PLANETS[currentPlanetIndex].name;
+      const currentPlanetInfo = PLANETS[currentPlanetIndex].info;
+      typeWriterEffect(planetDisplay, currentPlanetName);
+      k.wait(1, () => typeWriterEffect(planetInfoDisplay, currentPlanetInfo));
+      k.wait(5, () => {
+        if (planetDisplay.innerText === currentPlanetName) planetDisplay.innerText = "";
+        if (planetInfoDisplay.innerText === currentPlanetInfo) planetInfoDisplay.innerText = "";
+      });
+      
+      // Play sfx and spawn the planet
+      k.play(k.choose(["event1", "event2"]), { volume: 0.75 });
+
+      const planet = k.add([
+        k.sprite(PLANETS[currentPlanetIndex].name.toLowerCase()),
+        k.pos(k.choose([MIN_X + 125, MAX_X - 125]), k.height() * 0.1),
+        k.scale(k.rand(0.25, 0.5)),
+        k.rotate(k.rand(-20, 5)),
+        k.opacity(0),
+        k.anchor("center"),
+        k.z(-1),
+      ]);
+
+      const endM = PLANETS[currentPlanetIndex].endM;
+      planet.onUpdate(() => {
+        if (planet.opacity < 0.35 && meters < endM) planet.opacity += 0.1 * k.dt();
+        if (meters > endM) planet.opacity -= 0.1 * k.dt();
+        planet.pos.y += 5 * k.dt();
+        planet.angle += 1 * k.dt();
+        if (planet.pos.y > k.height() + 500) planet.destroy();
+      });
+
+    }
+
+  }
+}
+
+function shuffle(array) {
+  let currentIndex = array.length;
+  let randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+}
+
+function initPlanetsOrder() {
+  shuffle(PLANETS);
+  const startMs = [25, 100, 250, 450, 650];
+  const endMs = [75, 200, 400, 600, 800]
+  for (let i = 0; i < PLANETS.length; i++) {
+    PLANETS[i].startM = startMs[i];
+    PLANETS[i].endM = endMs[i];
+  }
+}
+
+// Set random planets order
+initPlanetsOrder();
 
 // ------------------------------
 // Overlay and Modals
@@ -1149,6 +1602,7 @@ const overlay = document.getElementById("overlay");
 overlay.addEventListener("click", () => {
   overlay.classList.add("hidden");
   shopUI.classList.add("hidden");
+  rankUI.classList.add("hidden");
 });
 
 // ------------------------------
@@ -1170,16 +1624,19 @@ const SHOP_ITEMS = [
         k.z(starr.z - 1),
         "shield"
       ]);
-      shield.onUpdate(() => shield.pos = starr.pos);
+      shield.onUpdate(() => {
+        if (died) shield.destroy();
+        shield.pos = starr.pos;
+      });
       healthBar.src = "./assets/sprites/health-bar/125.png";
       
     }
   },
   { id: "item-speedy", name: "Speedy", currency: "silver-coin", price: 50, icon: "speedy.png",
-    info: "Boosts your speed five times on start", bought: false,
+    info: "Boosts your speed three times on start", bought: false,
     onBuy: () => {
       addBuffIcon("speedy");
-      speed = 5;
+      speed = 3;
     }
   },
   { id: "item-stasis", name: "Stasis", currency: "silver-coin", price: 80, icon: "stasis.png",
@@ -1195,7 +1652,10 @@ const SHOP_ITEMS = [
         k.opacity(0.1),
         k.z(starr.z - 1)
       ]);
-      stasis.onUpdate(() => stasis.pos = starr.pos);
+      stasis.onUpdate(() => {
+        if (died) stasis.destroy();
+        stasis.pos = starr.pos;
+      });
       
     }
   },
@@ -1229,7 +1689,7 @@ const SHOP_ITEMS = [
         
         for (const coin of coins) {
           const dist = coin.pos.dist(starr.pos);
-          if (dist <= 175) {
+          if (dist <= 150) {
             const dir = starr.pos.sub(coin.pos).unit();
             coin.pos = coin.pos.add(dir.scale(400 * k.dt()));
           }
@@ -1377,7 +1837,7 @@ updateShopTimer();
 // ------------------------------
 const shopBtn = document.getElementById("shop-btn");
 const shopUI = document.getElementById("shop-ui");
-shopBtn.addEventListener("click", (e) => {
+shopBtn.addEventListener("click", () => {
   shopUI.classList.remove("hidden");
   overlay.classList.remove("hidden");
 });
@@ -1391,60 +1851,12 @@ function buyItem(btn, item) {
   // If enough coins
   if (currentBalance >= item.price) {
 
-    // Buy the item and reduce coins
+    // Reduce coins, buy the item, add vfx, sfx, and show success prompt
     changeCoins(-item.price, null, isGold);
     item.bought = true;
-    [...btn.children].forEach((child) => child.classList.add("opacity-50"));
     item.onBuy();
-
-    // Play sfx
+    btn.classList.add("opacity-50");
     k.play(item.currency === "silver-coin" ? "coin1" : "coin2", { volume: 0.5 });
-    
-    // Coin bounce up anim
-    const bounceCoin = document.createElement("img");
-    const currency =  isGold ? "coin" : "silver-coin";
-    const frames = [
-      `./assets/sprites/${currency}/frame1.png`,
-      `./assets/sprites/${currency}/frame2.png`,
-      `./assets/sprites/${currency}/frame3.png`,
-      `./assets/sprites/${currency}/frame4.png`,
-      `./assets/sprites/${currency}/frame5.png`,
-      `./assets/sprites/${currency}/frame6.png`,
-      `./assets/sprites/${currency}/frame7.png`,
-      `./assets/sprites/${currency}/frame8.png`,
-    ];
-    
-    bounceCoin.src = frames[0];
-    bounceCoin.className = "absolute left-1/2 top-1/2 -translate-x-1/2 translate-y-1 pointer-events-none w-8 h-8";
-    btn.appendChild(bounceCoin);
-    bounceCoin.animate(
-      [
-        { transform: 'translateY(0)', opacity: 1, offset: 0 },,
-        { transform: 'translateY(-50%)', opacity: 1, offset: 0.25 },
-        { transform: 'translateY(-125%)', opacity: 1, offset: 0.5 },
-        { transform: 'translateY(-75%)', opacity: 1, offset: 0.75 },
-        { transform: 'translateY(0)', opacity: 0, offset: 1 }
-      ],
-      {
-        duration: 500,
-        easing: 'ease-out',
-        fill: 'forwards'
-      }
-    );
-    
-    let currentFrame = 0;
-    const switchFrameLoop = k.loop(0.06, () => {
-      if (currentFrame >= 7) return;
-      currentFrame++;
-      bounceCoin.src = frames[currentFrame];
-    });
-    
-    k.wait(0.5, () => {
-      switchFrameLoop.cancel();
-      bounceCoin.remove();
-    });
-    
-    // Show success prompt
     shopItemInfoLabel.innerHTML = k.choose(["Purchase successful!", "Item acquired!", "A fine choice!"]);
 
   } else {
@@ -1482,3 +1894,44 @@ function addBuffIcon(buffName) {
 
 // Init shop once
 renderShopItems();
+
+// ------------------------------
+// Rank
+// ------------------------------
+const rankBtn = document.getElementById("rank-btn");
+const rankUI = document.getElementById("rank-ui");
+rankBtn.addEventListener("click", () => {
+  rankUI.classList.remove("hidden");
+  overlay.classList.remove("hidden");
+});
+
+const rankBestDistanceLabel = document.getElementById("rank-best-distance");
+const rankDisplayLabel = document.getElementById("rank-display");
+function renderRank() {
+
+  // Refresh rank
+  rank = Math.round(k.mapc(bestDistance, 0, 1473, 284, 1));
+  localStorage.setItem(RANK, rank);
+
+  // Render labels
+  let rankColor = "text-white";
+
+  if (rank <= 5) {
+    rankColor = "text-amber-11";
+  } else if (rank <= 25) {
+    rankColor = "text-green-11";
+  } else if (rank <= 50) {
+    rankColor = "text-blue-11";
+  } else if (rank <= 100) {
+    rankColor = "text-purple-11";
+  } else {
+    rankColor = "text-gray-11";
+  }
+
+  rankBestDistanceLabel.innerHTML = `Best Distance: <span class="text-red-11 text-xl">${bestDistance}m</span>...`;
+  rankDisplayLabel.innerHTML = `Your rank: <span class="${rankColor} text-2xl">#${rank}</span>!`;
+
+}
+
+// Init rank once
+renderRank();
