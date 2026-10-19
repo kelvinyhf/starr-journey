@@ -403,11 +403,13 @@ k.loadShader("flash", null, `
 
 const bgms = ["Pixel Peeker Polka - slower", "Pixelland", "Reformat"];
 let startIndex = k.choose([0, 1, 2]);
+let currentBGM = null;
+let stopBGMLoop = false;
 function playBGM(index) {
-  const currentBGM = k.play(bgms[index], { volume: 0.5 });
+  currentBGM = k.play(bgms[index], { volume: 0.4 });
   currentBGM.onEnd(() => {
     k.wait(5, () => {
-      playBGM(index === 2 ? 0 : ++index);
+      if (!stopBGMLoop) playBGM(index === 2 ? 0 : ++index);
     });
   });
 }
@@ -1067,14 +1069,14 @@ const POTIONS = [
       const blindnessMask = k.add([
         k.sprite("blindness-mask"),
         k.anchor("center"),
-        k.scale(3),
+        k.scale(3.5),
         k.pos(starr.pos),
         k.opacity(0),
         k.z(9999),
       ]);
       
       // Fade in and make it follow Starr
-      k.tween(0, 0.9, 0.5, (v) => blindnessMask.opacity = v);
+      k.tween(0, 0.85, 0.5, (v) => blindnessMask.opacity = v);
       blindnessMask.onUpdate(() => {
         if (died) blindnessMask.destroy();
         blindnessMask.pos = starr.pos;
@@ -1134,9 +1136,96 @@ const POTIONS = [
       
     }
   },
-  { name: "unknown-potion", potionSprite: "unknown", borderSprite: "starr-black-border",
+  { name: "unknown-potion", potionSprite: "unknown", borderSprite: "starr-black-border", noSFX: true,
     onPick: () => {
-      // COMING SOON...
+      
+      // Set unknown potion unavailable and stop current bgm
+      for (const item of GAME_ITEMS) if (item.type === "unknown-potion") item.available = false;
+      stopBGMLoop = true;
+      currentBGM.stop();
+
+      // Make it impossible to enter new planets
+      // ADD SMTH
+
+      // Enter 'The Black Hole'
+      const blackOverlay = document.getElementById("black-overlay");
+      blackOverlay.classList.remove("hidden");
+
+      k.wait(1, () => {
+        blackOverlay.classList.add("hidden");
+
+        // Play chaotic bgm
+        // ADD BGM
+
+        // Add chaotic vfx
+        k.loop(0.1, () => k.shake(1));
+        const darknessEffect = k.add([
+          k.rect(k.width(), k.height()),
+          k.color(0, 0, 0),
+          k.opacity(0.5),
+          k.z(1000)
+        ]);
+
+        // Make screen flashes
+        k.onUpdate(() => {
+          darknessEffect.opacity = 0.5 + Math.sin(k.time() * 5) * 0.1;
+        });
+
+        // Visually negative meters
+        // ADD SMTH
+        
+        // Add same debuff as Mars and Jupiter
+        PLANETS.find(p => p.name === "Mars").onEnter();
+        PLANETS.find(p => p.name === "Jupiter").onEnter();
+
+        // Add similar debuff as Uranus (stronger wind)
+        let windDirection = 0;
+        let windForce = 0;
+        k.onUpdate(() => {
+          if (!isInGame || died) return;
+          if (windDirection !== 0) {
+            starr.pos.x += windDirection * windForce * k.dt();
+          }
+        });
+
+        k.loop(k.rand(1.5, 3), () => {
+          if (!isInGame || died) return;
+          
+          // Set random direction and force
+          windDirection = k.choose([-1, 1]);
+          windForce = k.rand(1000, 1500);
+
+          // Spawn wind lines
+          for (let i = 0; i < 10; i++) {
+            const windLine = k.add([
+              k.rect(k.rand(80, 150), k.rand(1, 3)),
+              k.color(255, 255, 255),
+              k.opacity(0.5),
+              k.pos(windDirection === 1 ? MIN_X : MAX_X, k.rand(0, k.height())),
+              k.anchor("center"),
+              k.z(3)
+            ]);
+            
+            windLine.onUpdate(() => {
+              windLine.pos.x += windDirection * 1200 * k.dt();
+              windLine.opacity -= 1 * k.dt();
+              if (windLine.opacity <= 0) windLine.destroy();
+            });
+          }
+          
+          k.play("wind", { volume: 0.75 });
+          k.shake(10);
+          
+          // Reset wind after 0.75 seconds
+          k.wait(0.75, () => {
+            windDirection = 0;
+            windForce = 0;
+          });
+        
+        });
+
+      });
+
     }
   },
 ];
@@ -1193,7 +1282,7 @@ for (const potion of POTIONS) {
     // Destroy potion, play vfx and sfx
     potionSprite.destroy();
     potionEffect(potion.potionSprite, potion.borderSprite);
-    k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
+    if (!potion.noSFX) k.play(k.choose(["buff1", "buff2", "buff3"]), { volume: 0.75 });
 
     potion.onPick();
   });
@@ -1284,11 +1373,6 @@ starr.onCollide("ice", (ice) => {
 // ------------------------------
 const meterCounter = document.getElementById("meter-counter");
 const bestDistanceLabel = document.getElementById("best-distance");
-
-function truncTo(num, decimals) {
-  const factor = Math.pow(10, decimals);
-  return Math.trunc(num * factor) / factor;
-}
 
 k.onUpdate(() => {
   if (!isInGame || died) return;
