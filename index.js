@@ -56,6 +56,8 @@ let currentPlanetIndex = null;
 // Potion effects
 let isBlind = false;
 let isConfused = false;
+let isInChaos = false;
+let unknownPotionSpawned = false;
 
 // Shop item effects
 let hasShield = false;
@@ -390,6 +392,8 @@ k.loadSound("gameover", "./assets/sounds/gameover.wav");
 k.loadSound("Pixel Peeker Polka - slower", "./assets/sounds/Pixel Peeker Polka - slower.mp3");
 k.loadSound("Pixelland", "./assets/sounds/Pixelland.mp3");
 k.loadSound("Reformat", "./assets/sounds/Reformat.mp3");
+k.loadSound("glitch-noise", "./assets/sounds/glitch-noise.wav");
+k.loadSound("glitch-beat", "./assets/sounds/glitch-beat.wav");
 k.loadSound("shield-explode", "./assets/sounds/shield-explode.wav");
 k.loadSound("dodge", "./assets/sounds/dodge.wav");
 
@@ -401,15 +405,48 @@ k.loadShader("flash", null, `
   }
 `);
 
+k.loadShader("glitch", null, `
+  uniform float u_time;
+
+  float rand(vec2 co) {
+    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+  }
+
+  vec4 frag(vec2 pos, vec2 uv, vec4 color, sampler2D tex) {
+    vec2 uv_glitch = uv;
+    
+    float glitchBlock = step(0.95, sin(u_time * 10.0 + uv.y * 20.0));
+    float jitter = (rand(vec2(u_time, uv.y)) - 0.5) * 0.1 * glitchBlock;
+    uv_glitch.x += jitter;
+
+    float rOffset = 0.003 * sin(u_time * 15.0);
+    float bOffset = -0.003 * cos(u_time * 15.0);
+
+    vec4 texR = texture2D(tex, uv_glitch + vec2(rOffset, 0.0));
+    vec4 texG = texture2D(tex, uv_glitch);
+    vec4 texB = texture2D(tex, uv_glitch + vec2(bOffset, 0.0));
+
+    vec4 finalColor = vec4(texR.r, texG.g, texB.b, 1.0);
+
+    float noise = rand(uv * u_time) * 0.25;
+    finalColor.rgb += vec3(noise - 0.125);
+
+    float scanline = sin(uv.y * 400.0) * 0.04;
+    finalColor.rgb -= scanline;
+
+    return finalColor;
+  }
+`);
+
 const bgms = ["Pixel Peeker Polka - slower", "Pixelland", "Reformat"];
 let startIndex = k.choose([0, 1, 2]);
-let currentBGM = null;
-let stopBGMLoop = false;
-function playBGM(index) {
-  currentBGM = k.play(bgms[index], { volume: 0.4 });
-  currentBGM.onEnd(() => {
+let currentBgm = null;
+let bgmVolume = 0.4;
+function playBgm(index) {
+  currentBgm = k.play(bgms[index], { volume: bgmVolume });
+  currentBgm.onEnd(() => {
     k.wait(5, () => {
-      if (!stopBGMLoop) playBGM(index === 2 ? 0 : ++index);
+      playBgm(index === 2 ? 0 : ++index);
     });
   });
 }
@@ -430,7 +467,7 @@ function enterGame(mode) {
   starr.pos.y = baseY;
   menuUI.classList.add('hidden');
   gameUI.classList.remove('hidden');
-  playBGM(startIndex);
+  playBgm(startIndex);
 }
 
 function gameOver() {
@@ -732,6 +769,7 @@ function getRandomItem(config) {
   const currentTime = k.time();
   const availableItems = config.filter((item) => {
     if (item.available === false) return false;
+    if (item.type === "unknown-potion" && unknownPotionSpawned) return false;
     if (item.isPickup && (currentTime - lastPickupSpawnTime < 10)) return false;
     return true;
   });
@@ -740,7 +778,10 @@ function getRandomItem(config) {
   let randomNum = k.rand(0, totalWeight);
 
   for (const item of availableItems) {
-    if (randomNum < item.weight) return item;
+    if (randomNum < item.weight) {
+      if (item.type === "unknown-potion") unknownPotionSpawned = true;
+      return item;
+    }
     randomNum -= item.weight;
   }
   return availableItems[0];
@@ -1138,27 +1179,45 @@ const POTIONS = [
   },
   { name: "unknown-potion", potionSprite: "unknown", borderSprite: "starr-black-border", noSFX: true,
     onPick: () => {
-      
-      // Set unknown potion unavailable and stop current bgm
-      for (const item of GAME_ITEMS) if (item.type === "unknown-potion") item.available = false;
-      stopBGMLoop = true;
-      currentBGM.stop();
-
-      // Make it impossible to enter new planets
-      // ADD SMTH
-
-      // Enter 'The Black Hole'
       const blackOverlay = document.getElementById("black-overlay");
-      blackOverlay.classList.remove("hidden");
+
+      // Fade in shake effect
+      let force = 0;
+      const shakeInLoop = k.loop(0.1, () => {
+        force += 0.5;
+        k.shake(force);
+      });
 
       k.wait(1, () => {
-        blackOverlay.classList.add("hidden");
+
+        // Stop current bgm (set volume to 0)
+        currentBgm.volume = 0;
+        bgmVolume = 0;
+
+        // Enter transition and set invincible
+        blackOverlay.style.opacity = 1;
+        shakeInLoop.cancel();
+        isInvincible = true;
+
+      });
+
+      k.wait(2, () => {
+        blackOverlay.style.opacity = 0;
+        isInChaos = true;
+
+        // Invincible for 1 more second
+        k.wait(1, () => isInvincible = false);
 
         // Play chaotic bgm
-        // ADD BGM
+        k.play("glitch-noise", { volume: 0.4, loop: true });
+        k.play("glitch-beat", { volume: 0.4, loop: true });
 
         // Add chaotic vfx
         k.loop(0.1, () => k.shake(1));
+        k.usePostEffect("glitch", () => ({
+          u_time: k.time()
+        }));
+
         const darknessEffect = k.add([
           k.rect(k.width(), k.height()),
           k.color(0, 0, 0),
@@ -1170,13 +1229,17 @@ const POTIONS = [
         k.onUpdate(() => {
           darknessEffect.opacity = 0.5 + Math.sin(k.time() * 5) * 0.1;
         });
-
-        // Visually negative meters
-        // ADD SMTH
         
         // Add same debuff as Mars and Jupiter
         PLANETS.find(p => p.name === "Mars").onEnter();
         PLANETS.find(p => p.name === "Jupiter").onEnter();
+
+        // Add flashing starr effect
+        k.loop(0.05, () => {
+          if (died) return;
+          starr.pos.x += k.rand(-25, 25);
+          starr.pos.y += k.rand(-10, 10); 
+        });
 
         // Add similar debuff as Uranus (stronger wind)
         let windDirection = 0;
@@ -1213,7 +1276,7 @@ const POTIONS = [
             });
           }
           
-          k.play("wind", { volume: 0.75 });
+          k.play("wind", { volume: 0.25 });
           k.shake(10);
           
           // Reset wind after 0.75 seconds
@@ -1377,8 +1440,12 @@ const bestDistanceLabel = document.getElementById("best-distance");
 k.onUpdate(() => {
   if (!isInGame || died) return;
   meters += speed * k.dt();
-  meterCounter.innerText = meters.toFixed(1) + "m";
   updatePlanets();
+
+  // Chaos effect for meter counter label
+  const metersText = isInChaos ? "-" + (meters * 2).toFixed(1) + "m" : meters.toFixed(1) + "m";
+  meterCounter.innerText = metersText;
+
 });
 
 // ------------------------------
@@ -1590,6 +1657,7 @@ function typeWriterEffect(el, text) {
 
 let onLeaveCallback = null;
 function updatePlanets() {
+  if (isInChaos) return;
   const foundIndex = PLANETS.findIndex((p) => meters >= p.startM && meters <= p.endM);
   const newIndex = foundIndex !== -1 ? foundIndex : null;
 
@@ -1646,7 +1714,7 @@ function updatePlanets() {
         if (meters > endM) planet.opacity -= 0.1 * k.dt();
         planet.pos.y += 5 * k.dt();
         planet.angle += 1 * k.dt();
-        if (planet.pos.y > k.height() + 500) planet.destroy();
+        if (planet.pos.y > k.height() + 500 || isInChaos) planet.destroy();
       });
 
     }
@@ -1666,8 +1734,8 @@ function shuffle(array) {
 
 function initPlanetsOrder() {
   shuffle(PLANETS);
-  const startMs = [25, 100, 250, 450, 650];
-  const endMs = [75, 200, 400, 600, 800]
+  const startMs = [25, 150, 300, 500, 750, 1000];
+  const endMs = [100, 250, 450, 700, 950, 1200];
   for (let i = 0; i < PLANETS.length; i++) {
     PLANETS[i].startM = startMs[i];
     PLANETS[i].endM = endMs[i];
