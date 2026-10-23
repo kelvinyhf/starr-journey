@@ -57,7 +57,7 @@ let currentPlanetIndex = null;
 let isBlind = false;
 let isConfused = false;
 let isInChaos = false;
-let specialPotionSpawned = false;
+let unknownPotionSpawned = false;
 
 // Shop item effects
 let hasShield = false;
@@ -277,28 +277,6 @@ k.loadSprite(
   {
     anims: {
       unknown: {
-        from: 0,
-        to: 3,
-        speed: 20,
-        loop: false
-      }
-    }
-  }
-);
-
-// Mystic Potion
-k.loadSprite("mystic-potion", "./assets/sprites/pickups/mystic-potion.png");
-k.loadSprite(
-  "mystic",
-  [
-    "./assets/sprites/mystic/frame1.png",
-    "./assets/sprites/mystic/frame2.png",
-    "./assets/sprites/mystic/frame3.png",
-    "./assets/sprites/mystic/frame4.png"
-  ],
-  {
-    anims: {
-      mystic: {
         from: 0,
         to: 3,
         speed: 20,
@@ -780,8 +758,7 @@ let GAME_ITEMS = [
   { name: "coin-bag", type: "coin-bag", weight: 0.2, scale: [1, 1.25], category: "positive", isPickup: true },
   
   // Special Pickup
-  { name: "unknown-potion", type: "unknown-potion", weight: 0.2, scale: [1, 1.25], category: "negative", available: false },
-  { name: "mystic-potion", type: "mystic-potion", weight: 0.2, scale: [1, 1.25], category: "positive", available: false },
+  { name: "unknown-potion", type: "unknown-potion", weight: 0.1, scale: [1, 1.25], category: "negative", available: false },
   { name: "water", type: "water", weight: 0.5, scale: [1, 1.25], category: "positive", available: false },
   { name: "ice", type: "ice", weight: 1, scale: [0.9, 1.1], speed: [600, 800], category: "negative", available: false }
 
@@ -792,7 +769,7 @@ function getRandomItem(config) {
   const currentTime = k.time();
   const availableItems = config.filter((item) => {
     if (item.available === false) return false;
-    if ((item.type === "unknown-potion" || item.type === "mystic-potion") && specialPotionSpawned) return false;
+    if (item.type === "unknown-potion" && unknownPotionSpawned) return false;
     if (item.isPickup && (currentTime - lastPickupSpawnTime < 10)) return false;
     return true;
   });
@@ -802,7 +779,7 @@ function getRandomItem(config) {
 
   for (const item of availableItems) {
     if (randomNum < item.weight) {
-      if (item.type === "unknown-potion" || item.type === "mystic-potion") specialPotionSpawned = true;
+      if (item.type === "unknown-potion") unknownPotionSpawned = true;
       return item;
     }
     randomNum -= item.weight;
@@ -1222,10 +1199,6 @@ const POTIONS = [
         shakeInLoop.cancel();
         isInvincible = true;
 
-        // Grayscale health bar (and glitching meter counter)
-        healthBar.classList.add("grayscale", "opacity-75");
-        meterCounter.classList.add("opacity-75");
-
       });
 
       k.wait(2, () => {
@@ -1318,11 +1291,6 @@ const POTIONS = [
 
     }
   },
-  { name: "mystic-potion", potionSprite: "mystic", borderSprite: "starr-black-border", noSFX: true,
-    onPick: () => {
-      
-    }
-  }
 ];
 
 function potionEffect(potionSprite, borderSprite) {
@@ -1475,7 +1443,7 @@ k.onUpdate(() => {
   updatePlanets();
 
   // Chaos effect for meter counter label
-  const metersText = isInChaos ? "-" + k.rand(100, 1000).toFixed(1) + "m" : meters.toFixed(1) + "m";
+  const metersText = isInChaos ? "-" + (meters * 2).toFixed(1) + "m" : meters.toFixed(1) + "m";
   meterCounter.innerText = metersText;
 
 });
@@ -1489,10 +1457,10 @@ let PLANETS = [
   { name: "Earth", color: null, info: `Our peaceful home...`,
     onEnter: () => {
 
-      // Set unknown and mystic potion available
-      for (const item of GAME_ITEMS) if (item.type === "unknown-potion" || item.type === "mystic-potion") item.available = true;
+      // Set unknown potion available
+      for (const item of GAME_ITEMS) if (item.type === "unknown-potion") item.available = true;
       return () => {
-        for (const item of GAME_ITEMS) if (item.type === "unknown-potion" || item.type === "mystic-potion") item.available = false;
+        for (const item of GAME_ITEMS) if (item.type === "unknown-potion") item.available = false;
       };
 
     }
