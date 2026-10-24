@@ -460,6 +460,7 @@ const deathScreenUI = document.getElementById("death-screen-ui");
 const playBtn = document.getElementById("play-btn");
 const collectedCoinsLabel = document.getElementById("collected-coins-label");
 const retryBtn = document.getElementById("retry-btn");
+const blackOverlay = document.getElementById("black-overlay");
 
 function enterGame(mode) {
   isInGame = true;
@@ -501,6 +502,11 @@ function gameOver() {
   silverCoinLabel.innerText = silverCoins;
 
   k.wait(1, () => {
+    if (isInChaos) {
+      k.onUpdate(() => blackOverlay.style.opacity += 0.5 * k.dt());
+      
+    };
+
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
     collectedCoinsLabel.innerHTML = `
@@ -758,7 +764,7 @@ let GAME_ITEMS = [
   { name: "coin-bag", type: "coin-bag", weight: 0.2, scale: [1, 1.25], category: "positive", isPickup: true },
   
   // Special Pickup
-  { name: "unknown-potion", type: "unknown-potion", weight: 0.1, scale: [1, 1.25], category: "negative", available: false },
+  { name: "unknown-potion", type: "unknown-potion", weight: 1, scale: [1, 1.25], category: "negative", available: true },
   { name: "water", type: "water", weight: 0.5, scale: [1, 1.25], category: "positive", available: false },
   { name: "ice", type: "ice", weight: 1, scale: [0.9, 1.1], speed: [600, 800], category: "negative", available: false }
 
@@ -770,7 +776,7 @@ function getRandomItem(config) {
   const availableItems = config.filter((item) => {
     if (item.available === false) return false;
     if (item.type === "unknown-potion" && unknownPotionSpawned) return false;
-    if (item.isPickup && (currentTime - lastPickupSpawnTime < 10)) return false;
+    if (item.isPickup && ((currentTime - lastPickupSpawnTime < 10) || isInChaos)) return false;
     return true;
   });
   
@@ -1179,8 +1185,7 @@ const POTIONS = [
   },
   { name: "unknown-potion", potionSprite: "unknown", borderSprite: "starr-black-border", noSFX: true,
     onPick: () => {
-      const blackOverlay = document.getElementById("black-overlay");
-
+      
       // Fade in shake effect
       let force = 0;
       const shakeInLoop = k.loop(0.1, () => {
@@ -1198,6 +1203,10 @@ const POTIONS = [
         blackOverlay.style.opacity = 1;
         shakeInLoop.cancel();
         isInvincible = true;
+
+        // Grayscale health bar (and glitching meter counter)
+        healthBar.classList.add("grayscale", "opacity-75");
+        meterCounter.classList.add("opacity-75");
 
       });
 
@@ -1443,7 +1452,7 @@ k.onUpdate(() => {
   updatePlanets();
 
   // Chaos effect for meter counter label
-  const metersText = isInChaos ? "-" + (meters * 2).toFixed(1) + "m" : meters.toFixed(1) + "m";
+  const metersText = isInChaos ? "-" + k.rand(100, 1000).toFixed(1) + "m" : meters.toFixed(1) + "m";
   meterCounter.innerText = metersText;
 
 });
