@@ -503,10 +503,21 @@ function gameOver() {
 
   k.wait(1, () => {
     if (isInChaos) {
-      k.onUpdate(() => blackOverlay.style.opacity += 0.5 * k.dt());
+      let currentOpacity = 0;
       
+      // Fade out effect
+      k.onUpdate(() => {
+        currentOpacity += 0.75 * k.dt();
+        blackOverlay.style.opacity = currentOpacity;
+        if (blackOverlay.style.opacity >= 1) {
+          k.wait(1, () => location.reload());
+        }
+      });
+      
+      return;
     };
-
+    
+    // Display info
     k.play("gameover", { volume: 1.25 });
     deathScreenUI.classList.remove("hidden");
     collectedCoinsLabel.innerHTML = `
@@ -764,7 +775,7 @@ let GAME_ITEMS = [
   { name: "coin-bag", type: "coin-bag", weight: 0.2, scale: [1, 1.25], category: "positive", isPickup: true },
   
   // Special Pickup
-  { name: "unknown-potion", type: "unknown-potion", weight: 1, scale: [1, 1.25], category: "negative", available: true },
+  { name: "unknown-potion", type: "unknown-potion", weight: 0.15, scale: [1, 1.25], category: "negative", available: false },
   { name: "water", type: "water", weight: 0.5, scale: [1, 1.25], category: "positive", available: false },
   { name: "ice", type: "ice", weight: 1, scale: [0.9, 1.1], speed: [600, 800], category: "negative", available: false }
 
@@ -996,7 +1007,7 @@ function changeHealth(num, meteorPos) {
     if (health <= 0) {
       gameOver();
       explode(meteorPos, true);
-      k.play("explosion2", { volume: 1 });
+      k.play("explosion2", { volume: 0.9 });
     } else {
       explode(meteorPos)
       k.play("explosion1", { volume: 0.8 });
